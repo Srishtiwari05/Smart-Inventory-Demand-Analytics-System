@@ -7,10 +7,10 @@ INSERT INTO categories (name, description) VALUES
 ('Stationery', 'Office supplies');
 
 -- Seed Suppliers
-INSERT INTO suppliers (name, contact_info) VALUES 
-('TechCorp', 'contact@techcorp.com'),
-('OfficeSupplies Inc', 'sales@officesupplies.com'),
-('Global Trade', 'global@trade.com');
+INSERT INTO suppliers (name, contact_info, lead_time_days) VALUES 
+('TechCorp', 'contact@techcorp.com', 7),
+('OfficeSupplies Inc', 'sales@officesupplies.com', 3),
+('Global Trade', 'global@trade.com', 10);
 
 -- Seed Customers
 INSERT INTO customers (name, email, phone) VALUES 

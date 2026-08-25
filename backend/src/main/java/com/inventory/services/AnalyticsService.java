@@ -1,0 +1,106 @@
+package com.inventory.services;
+
+import com.inventory.daos.InventoryTransactionDao;
+import com.inventory.daos.ProductDao;
+import com.inventory.daos.SupplierDao;
+import com.inventory.models.InventoryTransaction;
+import com.inventory.models.Product;
+import com.inventory.models.ReorderRecommendation;
+import com.inventory.models.SimulationResult;
+import com.inventory.models.Supplier;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class AnalyticsService {
+
+    private final ProductDao productDao = new ProductDao();
+    private final SupplierDao supplierDao = new SupplierDao();
+    private final InventoryTransactionDao transactionDao = new InventoryTransactionDao();
+
+    /**
+     * Calculates historical daily demand by finding all SALE transactions
+     * and averaging them over an assumed 30-day period.
+     * (In a production system, we'd query by exact date range).
+     */
+    public double calculateHistoricalDailyDemand(int productId) {
+        List<InventoryTransaction> transactions = transactionDao.getTransactionsByProductId(productId);
+        int totalSold = 0;
+        for (InventoryTransaction t : transactions) {
+            if ("SALE".equals(t.getTransactionType())) {
+                // Sale quantities are logged as negative numbers, so we make it positive
+                totalSold += Math.abs(t.getQuantityChanged());
+            }
+        }
+        
+        // If no sales, assume a minimum velocity of 1 per day for demonstration
+        if (totalSold == 0) return 1.0; 
+        
+        return totalSold / 30.0;
+    }
+
+    /**
+     * Generates a smart recommendation on whether to reorder and explains WHY.
+     */
+    public ReorderRecommendation getReorderRecommendation(int productId) {
+        Product p = productDao.getProductById(productId);
+        if (p == null) return null;
+
+        Supplier s = supplierDao.getSupplierById(p.getSupplierId());
+        int leadTimeDays = (s != null) ? s.getLeadTimeDays() : 5; // default 5 if no supplier
+        
+        double dailyDemand = calculateHistoricalDailyDemand(productId);
+        
+        // Reorder Point = (Lead Time * Daily Demand) + Safety Stock (assume 10% buffer)
+        int safetyStock = (int) Math.ceil((leadTimeDays * dailyDemand) * 0.10);
+        int reorderPoint = (int) Math.ceil(leadTimeDays * dailyDemand) + safetyStock;
+        
+        boolean needsReorder = p.getStockQuantity() <= reorderPoint;
+        
+        int recommendedAmount = 0;
+        String reason = "Stock level (" + p.getStockQuantity() + ") is healthy.";
+        
+        if (needsReorder) {
+            // Reorder up to double the reorder point
+            recommendedAmount = (reorderPoint * 2) - p.getStockQuantity();
+            reason = String.format("⚠️ Reorder recommended because projected demand (%.1f units/day) over the supplier's lead time (%d days) exceeds available inventory by %d units (including safety stock).",
+                    dailyDemand, leadTimeDays, (reorderPoint - p.getStockQuantity()));
+        }
+
+        return new ReorderRecommendation(p, recommendedAmount, reason, needsReorder);
+    }
+
+    /**
+     * Simulates a "What-If" scenario for a product's inventory.
+     * @param demandMultiplier E.g., 1.2 for a 20% increase in demand.
+     * @param extraLeadTimeDays E.g., 3 for a 3-day supplier delay.
+     */
+    public SimulationResult simulateScenario(int productId, double demandMultiplier, int extraLeadTimeDays) {
+        Product p = productDao.getProductById(productId);
+        if (p == null) return null;
+
+        Supplier s = supplierDao.getSupplierById(p.getSupplierId());
+        int baseLeadTime = (s != null) ? s.getLeadTimeDays() : 5;
+        
+        double baseDailyDemand = calculateHistoricalDailyDemand(productId);
+        
+        // Baseline calculation
+        int baseSafetyStock = (int) Math.ceil((baseLeadTime * baseDailyDemand) * 0.10);
+        int baseReorderPoint = (int) Math.ceil(baseLeadTime * baseDailyDemand) + baseSafetyStock;
+        int currentRequired = (p.getStockQuantity() <= baseReorderPoint) ? ((baseReorderPoint * 2) - p.getStockQuantity()) : 0;
+        
+        // Simulated calculation
+        double simDailyDemand = baseDailyDemand * demandMultiplier;
+        int simLeadTime = baseLeadTime + extraLeadTimeDays;
+        
+        int simSafetyStock = (int) Math.ceil((simLeadTime * simDailyDemand) * 0.10);
+        int simReorderPoint = (int) Math.ceil(simLeadTime * simDailyDemand) + simSafetyStock;
+        int simRequired = (p.getStockQuantity() <= simReorderPoint) ? ((simReorderPoint * 2) - p.getStockQuantity()) : 0;
+        
+        String desc = String.format("Simulated: Demand multiplied by %.1f, Lead time increased by %d days. Current stock is %d.",
+                demandMultiplier, extraLeadTimeDays, p.getStockQuantity());
+                
+        return new SimulationResult(p, currentRequired, simRequired, desc);
+    }
+}

@@ -19,7 +19,8 @@ CREATE TABLE categories (
 CREATE TABLE suppliers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    contact_info VARCHAR(255)
+    contact_info VARCHAR(255),
+    lead_time_days INT DEFAULT 5
 );
 
 CREATE TABLE customers (

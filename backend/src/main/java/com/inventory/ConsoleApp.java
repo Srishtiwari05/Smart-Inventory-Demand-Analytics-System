@@ -10,7 +10,7 @@ import com.inventory.utils.Sorter;
 import java.util.List;
 import java.util.Scanner;
 
-public class App {
+public class ConsoleApp {
 
     private static User currentUser = null;
     private static Scanner scanner = new Scanner(System.in);
@@ -74,6 +74,7 @@ public class App {
                 case 12: handleManageUsers(); break;
                 case 13: handleManageCustomers(); break;
                 case 14: handleDsaDemo(); break;
+                case 15: handleAnalytics(); break;
                 case 0:
                     System.out.println("Logging out... Goodbye, " + currentUser.getUsername() + "!");
                     running = false;
@@ -115,6 +116,7 @@ public class App {
 
         System.out.println(" [13] Manage Customers");
         System.out.println(" [14] DSA Demonstrations");
+        System.out.println(" [15] Demand Analytics & What-If Simulator");
         System.out.println(" [0]  Logout");
         System.out.println("=============================================");
     }
@@ -369,6 +371,47 @@ public class App {
                 break;
             default:
                 System.out.println("Invalid choice.");
+        }
+    }
+
+    // ==================== ANALYTICS ====================
+
+    private static void handleAnalytics() {
+        System.out.println("\n--- Demand Analytics & What-If Simulator ---");
+        List<Product> products = inventoryService.getAllProducts();
+        
+        System.out.print("Enter Product ID to analyze: ");
+        int pId = Integer.parseInt(scanner.nextLine().trim());
+        
+        com.inventory.services.AnalyticsService analyticsService = new com.inventory.services.AnalyticsService();
+        
+        com.inventory.models.ReorderRecommendation rec = analyticsService.getReorderRecommendation(pId);
+        if (rec == null) {
+            System.out.println("Product not found.");
+            return;
+        }
+        
+        System.out.println("\n[CURRENT SCENARIO]");
+        System.out.println("Product: " + rec.getProduct().getName());
+        System.out.println(rec.getReason());
+        if (rec.isActionRequired()) {
+            System.out.println("→ Recommended Action: Reorder " + rec.getRecommendedReorderQuantity() + " units immediately.");
+        }
+        
+        System.out.println("\n[WHAT-IF SIMULATOR]");
+        System.out.print("Expected demand change multiplier (e.g., 1.2 for +20%): ");
+        double multiplier = Double.parseDouble(scanner.nextLine().trim());
+        System.out.print("Supplier delay in days (e.g., 3): ");
+        int extraDays = Integer.parseInt(scanner.nextLine().trim());
+        
+        com.inventory.models.SimulationResult sim = analyticsService.simulateScenario(pId, multiplier, extraDays);
+        System.out.println("\n" + sim.getScenarioDescription());
+        System.out.println("→ Current Required Reorder: " + sim.getCurrentRequiredReorder() + " units");
+        System.out.println("→ New Required Reorder under scenario: " + sim.getSimulatedRequiredReorder() + " units");
+        
+        int difference = sim.getSimulatedRequiredReorder() - sim.getCurrentRequiredReorder();
+        if (difference > 0) {
+            System.out.println("⚠️ RISK DETECTED: You will fall short by " + difference + " units under this scenario if you only order the current required amount.");
         }
     }
 
