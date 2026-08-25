@@ -98,6 +98,25 @@ public class InventoryService {
         return expensive;
     }
     
+    public Product searchProductByName(String name) {
+        List<Product> products = productDao.getAllProducts();
+        for (Product p : products) {
+            if (p.getName().equalsIgnoreCase(name)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    public void deleteProduct(int productId) {
+        if (productDao.getProductById(productId) != null) {
+            productDao.deleteProduct(productId);
+            System.out.println("Product with ID " + productId + " deleted successfully.");
+        } else {
+            System.out.println("Product with ID " + productId + " not found.");
+        }
+    }
+
     public void printProductStatistics() {
         List<Product> products = productDao.getAllProducts();
         if (products.isEmpty()) {
