@@ -36,6 +36,7 @@ public class Product {
 
     public Supplier getSupplier() { return supplier; }
     public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+    public int getSupplierId() { return supplier != null ? supplier.getId() : 0; }
 
     public double getRating() { return rating; }
     public void setRating(double rating) { this.rating = rating; }
