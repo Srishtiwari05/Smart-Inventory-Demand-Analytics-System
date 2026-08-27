@@ -16,7 +16,7 @@ public class ConsoleApp {
     private static Scanner scanner = new Scanner(System.in);
 
     // Services
-    private static AuthService authService = new AuthService();
+    private static AuthService authService = AuthService.getInstance();
     private static InventoryService inventoryService = new InventoryService();
     private static OrderService orderService = new OrderService();
     private static SalesService salesService = new SalesService();
@@ -37,7 +37,10 @@ public class ConsoleApp {
             System.out.print("Password: ");
             String password = scanner.nextLine().trim();
 
-            currentUser = authService.login(username, password);
+            String token = authService.login(username, password);
+            if (token != null) {
+                currentUser = authService.getUserByToken(token);
+            }
             if (currentUser == null) {
                 System.out.println("Invalid credentials. Please try again.");
             } else {

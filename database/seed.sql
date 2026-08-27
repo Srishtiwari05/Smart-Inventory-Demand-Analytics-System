@@ -56,8 +56,9 @@ INSERT INTO sales (order_id, total_revenue, sale_date) VALUES
 (2, 199.99, DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (3, 47.00, DATE_SUB(NOW(), INTERVAL 1 DAY));
 
--- Seed Users (for Phase 3)
+-- Seed Users (for Phase 3 and beyond - Passwords are SHA-256 hashed)
+-- admin123, manager123, staff123
 INSERT INTO users (username, password, role) VALUES 
-('admin', 'admin123', 'ADMIN'),
-('manager', 'manager123', 'MANAGER'),
-('staff', 'staff123', 'STAFF');
+('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'ADMIN'),
+('manager', '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5', 'MANAGER'),
+('staff', '10176e7b7b24d317acfcf8d2064cfd2f24e154f7b5a96603077d5ef813d6a6b6', 'STAFF');

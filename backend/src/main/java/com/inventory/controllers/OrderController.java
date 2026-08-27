@@ -1,5 +1,6 @@
 package com.inventory.controllers;
 
+import com.inventory.daos.OrderDao;
 import com.inventory.services.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,12 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService = new OrderService();
+    private final OrderDao orderDao = new OrderDao();
+
+    @GetMapping
+    public List<String> getAllOrders() {
+        return orderDao.getAllOrderSummaries();
+    }
 
     @PostMapping
     public ResponseEntity<?> placeOrder(@RequestBody OrderRequest request) {
@@ -21,7 +28,7 @@ public class OrderController {
         }
         return ResponseEntity.badRequest().body("Failed to place order. Check stock availability and product IDs.");
     }
-    
+
     // Using an inner class for the request body mapping
     public static class OrderRequest {
         private int customerId;
