@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 
-export default function ProductsView() {
+export default function ProductsView({ user }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newProduct, setNewProduct] = useState({name: '', categoryId: 1, price: '', stockQuantity: '', supplierId: 1});
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = isAdmin || user?.role === 'MANAGER';
 
   useEffect(() => {
     fetchProducts();
@@ -15,10 +17,11 @@ export default function ProductsView() {
       const res = await fetch('/api/products', {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
       });
+      if (!res.ok) throw new Error('Unauthorized or server error');
       const data = await res.json();
       setProducts(data);
     } catch (err) {
-      console.error(err);
+      console.error('fetchProducts error:', err);
     } finally {
       setLoading(false);
     }
@@ -67,10 +70,12 @@ export default function ProductsView() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Products Inventory</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : 'Add Product'}
-        </button>
+        <h1 className="page-title">📦 Products Inventory</h1>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : '+ Add Product'}
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -117,9 +122,13 @@ export default function ProductsView() {
                   </td>
                   <td>{p.rating} ⭐</td>
                   <td>
-                    <button className="btn btn-primary" style={{padding: '6px 12px', fontSize: '0.8rem'}} onClick={() => handleRestock(p.id)}>
-                      Restock
-                    </button>
+                    {isManager ? (
+                      <button className="btn btn-primary" style={{padding: '6px 12px', fontSize: '0.8rem'}} onClick={() => handleRestock(p.id)}>
+                        Restock
+                      </button>
+                    ) : (
+                      <span style={{color: 'var(--text-secondary)', fontSize: '0.8rem'}}>View only</span>
+                    )}
                   </td>
                 </tr>
               ))}

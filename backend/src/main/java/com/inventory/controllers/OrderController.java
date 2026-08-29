@@ -20,6 +20,11 @@ public class OrderController {
         return orderDao.getAllOrderSummaries();
     }
 
+    @GetMapping("/customer/{id}")
+    public List<String> getOrdersByCustomer(@PathVariable int id) {
+        return orderDao.getOrderSummariesByCustomerId(id);
+    }
+
     @PostMapping
     public ResponseEntity<?> placeOrder(@RequestBody OrderRequest request) {
         int orderId = orderService.placeOrder(request.getCustomerId(), request.getProductIds(), request.getQuantities());

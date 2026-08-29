@@ -13,20 +13,22 @@ public class SupplierDao {
         String query = "SELECT id, name, contact_info, lead_time_days FROM suppliers WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-            
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return new Supplier(
-                            rs.getInt("id"),
-                            rs.getString("name"),
-                            rs.getString("contact_info"),
-                            rs.getInt("lead_time_days")
-                    );
-                }
+                if (rs.next()) return new Supplier(rs.getInt("id"), rs.getString("name"), rs.getString("contact_info"), rs.getInt("lead_time_days"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // Fallback for older schemas without lead_time_days
+            String queryFallback = "SELECT id, name, contact_info FROM suppliers WHERE id = ?";
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(queryFallback)) {
+                stmt.setInt(1, id);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) return new Supplier(rs.getInt("id"), rs.getString("name"), rs.getString("contact_info"), 5);
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
         }
         return null;
     }
@@ -37,17 +39,17 @@ public class SupplierDao {
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
-            
-            while (rs.next()) {
-                suppliers.add(new Supplier(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("contact_info"),
-                        rs.getInt("lead_time_days")
-                ));
-            }
+            while (rs.next()) suppliers.add(new Supplier(rs.getInt("id"), rs.getString("name"), rs.getString("contact_info"), rs.getInt("lead_time_days")));
         } catch (SQLException e) {
-            e.printStackTrace();
+            // Fallback for older schemas
+            String queryFallback = "SELECT id, name, contact_info FROM suppliers";
+            try (Connection conn = DatabaseConnection.getConnection();
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(queryFallback)) {
+                while (rs.next()) suppliers.add(new Supplier(rs.getInt("id"), rs.getString("name"), rs.getString("contact_info"), 5));
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
         }
         return suppliers;
     }

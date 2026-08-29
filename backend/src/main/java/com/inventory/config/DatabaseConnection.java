@@ -26,6 +26,12 @@ public class DatabaseConnection {
     public void setPassword(String password) { DatabaseConnection.password = password; }
 
     public static Connection getConnection() {
+        if (url == null || url.trim().isEmpty()) {
+            // Fallback for ConsoleApp which doesn't start the Spring context
+            url = "jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+            user = "root";
+            password = "Bhanu@2205";
+        }
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             return DriverManager.getConnection(url, user, password);
