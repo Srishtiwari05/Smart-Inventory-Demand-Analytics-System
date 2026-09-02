@@ -52,6 +52,10 @@ public class InventoryService {
         return productDao.getAllProducts();
     }
 
+    public List<Product> getAllProducts(int orgId) {
+        return productDao.getAllProducts(orgId);
+    }
+
     public List<Product> filterByPrice(double minPrice, double maxPrice) {
         List<Product> products = productDao.getAllProducts();
         List<Product> filtered = new ArrayList<>();

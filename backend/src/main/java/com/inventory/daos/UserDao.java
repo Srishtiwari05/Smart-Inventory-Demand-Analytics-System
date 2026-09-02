@@ -10,7 +10,7 @@ import java.util.List;
 public class UserDao {
 
     public User getUserByUsername(String username) {
-        String query = "SELECT id, username, password, role, created_at FROM users WHERE username = ?";
+        String query = "SELECT id, username, password, role, created_at, org_id FROM users WHERE username = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
 
@@ -22,7 +22,8 @@ public class UserDao {
                             rs.getString("username"),
                             rs.getString("password"),
                             User.Role.valueOf(rs.getString("role")),
-                            rs.getTimestamp("created_at")
+                            rs.getTimestamp("created_at"),
+                            rs.getInt("org_id")
                     );
                 }
             }
@@ -34,7 +35,7 @@ public class UserDao {
 
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String query = "SELECT id, username, password, role, created_at FROM users";
+        String query = "SELECT id, username, password, role, created_at, org_id FROM users";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
@@ -45,7 +46,8 @@ public class UserDao {
                         rs.getString("username"),
                         rs.getString("password"),
                         User.Role.valueOf(rs.getString("role")),
-                        rs.getTimestamp("created_at")
+                        rs.getTimestamp("created_at"),
+                        rs.getInt("org_id")
                 ));
             }
         } catch (SQLException e) {
@@ -55,13 +57,14 @@ public class UserDao {
     }
 
     public void addUser(User user) {
-        String query = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+        String query = "INSERT INTO users (username, password, role, org_id) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
 
             stmt.setString(1, user.getUsername());
             stmt.setString(2, user.getPassword());
             stmt.setString(3, user.getRole().name());
+            stmt.setInt(4, user.getOrgId() > 0 ? user.getOrgId() : 1);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

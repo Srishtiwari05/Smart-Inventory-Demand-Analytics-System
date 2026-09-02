@@ -8,8 +8,10 @@ import com.inventory.models.Product;
 import com.inventory.models.ReorderRecommendation;
 import com.inventory.models.SimulationResult;
 import com.inventory.models.Supplier;
+import com.inventory.models.InventoryRiskReport;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -102,5 +104,58 @@ public class AnalyticsService {
                 demandMultiplier, extraLeadTimeDays, p.getStockQuantity());
                 
         return new SimulationResult(p, currentRequired, simRequired, desc);
+    }
+
+    /**
+     * Categorizes a product's stock level into Healthy, Watch, Risk, or Critical.
+     */
+    public InventoryRiskReport analyzeRisk(int productId) {
+        Product p = productDao.getProductById(productId);
+        if (p == null) return null;
+
+        Supplier s = supplierDao.getSupplierById(p.getSupplierId());
+        int leadTimeDays = (s != null) ? s.getLeadTimeDays() : 5;
+
+        double dailyDemand = calculateHistoricalDailyDemand(productId);
+        
+        int safetyStock = (int) Math.ceil((leadTimeDays * dailyDemand) * 0.10);
+        int reorderPoint = (int) Math.ceil(leadTimeDays * dailyDemand) + safetyStock;
+        
+        int stock = p.getStockQuantity();
+        com.inventory.models.InventoryRisk riskLevel;
+        String explanation;
+
+        if (stock <= safetyStock) {
+            riskLevel = com.inventory.models.InventoryRisk.CRITICAL;
+            explanation = "Stock is critically low (at or below safety stock). Immediate action required.";
+        } else if (stock <= reorderPoint) {
+            riskLevel = com.inventory.models.InventoryRisk.RISK;
+            explanation = "Stock is below the reorder point. A restock is needed soon to prevent a stockout.";
+        } else if (stock <= reorderPoint * 1.5) {
+            riskLevel = com.inventory.models.InventoryRisk.WATCH;
+            explanation = "Stock is approaching the reorder point. Keep an eye on it.";
+        } else {
+            riskLevel = com.inventory.models.InventoryRisk.HEALTHY;
+            explanation = "Stock levels are healthy and well above the reorder point.";
+        }
+
+        return new com.inventory.models.InventoryRiskReport(p, riskLevel, explanation);
+    }
+
+    /**
+     * Returns a risk report for all products.
+     */
+    public List<com.inventory.models.InventoryRiskReport> getOverallRiskReport() {
+        List<Product> products = productDao.getAllProducts();
+        List<com.inventory.models.InventoryRiskReport> reportList = new ArrayList<>();
+        
+        for (Product p : products) {
+            com.inventory.models.InventoryRiskReport report = analyzeRisk(p.getId());
+            if (report != null) {
+                reportList.add(report);
+            }
+        }
+        
+        return reportList;
     }
 }

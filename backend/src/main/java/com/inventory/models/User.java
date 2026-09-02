@@ -13,13 +13,15 @@ public class User {
     private String password;
     private Role role;
     private Timestamp createdAt;
+    private int orgId;
 
-    public User(int id, String username, String password, Role role, Timestamp createdAt) {
+    public User(int id, String username, String password, Role role, Timestamp createdAt, int orgId) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.role = role;
         this.createdAt = createdAt;
+        this.orgId = orgId;
     }
 
     public User(String username, String password, Role role) {
@@ -42,6 +44,9 @@ public class User {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public int getOrgId() { return orgId; }
+    public void setOrgId(int orgId) { this.orgId = orgId; }
 
     @Override
     public String toString() {

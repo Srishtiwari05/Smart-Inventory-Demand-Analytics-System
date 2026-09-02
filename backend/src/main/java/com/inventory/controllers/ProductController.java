@@ -1,10 +1,13 @@
 package com.inventory.controllers;
 
 import com.inventory.models.Product;
+import com.inventory.models.User;
+import com.inventory.services.AuthService;
 import com.inventory.services.InventoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @RestController
@@ -12,9 +15,15 @@ import java.util.List;
 public class ProductController {
 
     private final InventoryService inventoryService = new InventoryService();
+    private final AuthService authService = AuthService.getInstance();
 
     @GetMapping
-    public List<Product> getAllProducts() {
+    public List<Product> getAllProducts(HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        // If auth is present, return only this org's products; otherwise fall back to all (dev only)
+        if (user != null) {
+            return inventoryService.getAllProducts(user.getOrgId());
+        }
         return inventoryService.getAllProducts();
     }
 
@@ -37,7 +46,11 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addProduct(@RequestBody Product product) {
+    public ResponseEntity<?> addProduct(@RequestBody Product product, HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user != null) {
+            product.setOrgId(user.getOrgId());
+        }
         inventoryService.addProduct(product);
         return ResponseEntity.ok("Product added successfully");
     }

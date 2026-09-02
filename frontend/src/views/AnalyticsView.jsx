@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 
+const RISK_STYLES = {
+  CRITICAL: { bg: 'rgba(239,68,68,0.15)', color: '#f87171', border: '#f87171', label: '🔴 CRITICAL' },
+  RISK:     { bg: 'rgba(249,115,22,0.15)', color: '#fb923c', border: '#fb923c', label: '🟠 RISK' },
+  WATCH:    { bg: 'rgba(234,179,8,0.15)',  color: '#facc15', border: '#facc15', label: '🟡 WATCH' },
+  HEALTHY:  { bg: 'rgba(34,197,94,0.1)',   color: '#4ade80', border: '#4ade80', label: '🟢 HEALTHY' },
+};
+
 export default function AnalyticsView() {
   const [report, setReport] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
@@ -7,8 +14,12 @@ export default function AnalyticsView() {
   const [sim, setSim] = useState({ productId: '', demandMultiplier: '1.5', extraLeadTime: '5' });
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
+  const [riskReport, setRiskReport] = useState([]);
+  const [predictionProductId, setPredictionProductId] = useState('');
+  const [prediction, setPrediction] = useState(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
 
-  useEffect(() => { fetchReport(); }, []);
+  useEffect(() => { fetchReport(); fetchRiskReport(); }, []);
 
   const fetchReport = async () => {
     try {
@@ -17,6 +28,15 @@ export default function AnalyticsView() {
       });
       const data = await res.json();
       setReport(data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchRiskReport = async () => {
+    try {
+      const res = await fetch('/api/analytics/risk', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+      });
+      if (res.ok) setRiskReport(await res.json());
     } catch (err) { console.error(err); }
   };
 
@@ -49,6 +69,24 @@ export default function AnalyticsView() {
       else alert('Simulation failed. Check product ID.');
     } catch (err) { console.error(err); }
     finally { setSimLoading(false); }
+  };
+
+  const fetchPrediction = async (e) => {
+    e.preventDefault();
+    if (!predictionProductId) return;
+    setPredictionLoading(true);
+    setPrediction(null);
+    try {
+      const res = await fetch(`/api/predictions/demand/${predictionProductId}`, {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+      });
+      if (res.ok) setPrediction(await res.json());
+      else setPrediction({ error: 'ML service unavailable. Make sure Flask is running on port 5000.' });
+    } catch (err) {
+      setPrediction({ error: 'Connection failed. Is the Python ML service running?' });
+    } finally {
+      setPredictionLoading(false);
+    }
   };
 
   return (
@@ -159,6 +197,81 @@ export default function AnalyticsView() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Recommendation</div>
                 <div style={{ color: 'var(--text-primary)', lineHeight: 1.6 }}>{simResult.recommendation}</div>
               </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* AI Demand Prediction */}
+      <div style={{ marginTop: '32px' }} className="glass-panel">
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--panel-border)' }}>
+          <h2>🤖 AI Demand Prediction</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>ML-powered 30-day demand forecast using historical sales data (RandomForest model).</p>
+        </div>
+        <div style={{ padding: '24px' }}>
+          <form onSubmit={fetchPrediction} style={{ display: 'flex', gap: '12px', maxWidth: '400px' }}>
+            <input
+              type="number"
+              placeholder="Product ID (e.g. 1)"
+              value={predictionProductId}
+              onChange={e => setPredictionProductId(e.target.value)}
+              required
+            />
+            <button type="submit" className="btn btn-primary" disabled={predictionLoading}>
+              {predictionLoading ? 'Predicting...' : '🔮 Predict'}
+            </button>
+          </form>
+
+          {prediction && !prediction.error && (
+            <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+              <div style={{ padding: '20px', background: 'rgba(139,92,246,0.15)', borderRadius: '12px', border: '1px solid #7c3aed' }}>
+                <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Product ID</div>
+                <div style={{ fontWeight: 700, fontSize: '1.5rem', color: '#c4b5fd' }}>#{prediction.productId}</div>
+              </div>
+              <div style={{ padding: '20px', background: 'rgba(139,92,246,0.2)', borderRadius: '12px', border: '1px solid #7c3aed' }}>
+                <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Predicted Demand</div>
+                <div style={{ fontWeight: 700, fontSize: '2rem', color: '#e9d5ff' }}>{prediction.predictedDemand} <span style={{ fontSize: '0.9rem', color: '#a78bfa' }}>units</span></div>
+              </div>
+              <div style={{ padding: '20px', background: 'rgba(139,92,246,0.15)', borderRadius: '12px', border: '1px solid #7c3aed' }}>
+                <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Forecast Period</div>
+                <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#c4b5fd' }}>Next 30 Days</div>
+              </div>
+              <div style={{ padding: '20px', background: 'rgba(139,92,246,0.15)', borderRadius: '12px', border: '1px solid #7c3aed' }}>
+                <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Daily Rate</div>
+                <div style={{ fontWeight: 700, fontSize: '1.5rem', color: '#c4b5fd' }}>{prediction.dailyDemandRate} <span style={{ fontSize: '0.9rem', color: '#a78bfa' }}>units/day</span></div>
+              </div>
+            </div>
+          )}
+          {prediction?.error && (
+            <div style={{ marginTop: '16px', padding: '14px 18px', background: 'rgba(239,68,68,0.1)', border: '1px solid #f87171', borderRadius: '10px', color: '#f87171' }}>
+              ⚠ {prediction.error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Inventory Risk Detection */}
+      <div style={{ marginTop: '32px' }} className="glass-panel">
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--panel-border)' }}>
+          <h2>🚦 Inventory Risk Detection</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Real-time stock health across all products.</p>
+        </div>
+        <div style={{ padding: '24px' }}>
+          {riskReport.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>Loading risk data...</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {riskReport.map(item => {
+                const style = RISK_STYLES[item.riskLevel] || RISK_STYLES.HEALTHY;
+                return (
+                  <div key={item.product?.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 18px', background: style.bg, border: `1px solid ${style.border}`, borderRadius: '10px' }}>
+                    <span style={{ fontWeight: 700, color: style.color, minWidth: '110px', fontSize: '0.85rem' }}>{style.label}</span>
+                    <span style={{ fontWeight: 600, flex: 1 }}>{item.product?.name}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', minWidth: '80px', textAlign: 'right' }}>{item.product?.stockQuantity} units</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', flex: 2 }}>{item.explanation}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

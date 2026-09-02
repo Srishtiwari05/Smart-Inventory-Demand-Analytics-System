@@ -8,6 +8,7 @@ public class Product {
     private int stockQuantity;
     private Supplier supplier;
     private double rating;
+    private int orgId;
 
     public Product(int id, String name, String category, double price, int stockQuantity, Supplier supplier, double rating) {
         this.id = id;
@@ -40,6 +41,9 @@ public class Product {
 
     public double getRating() { return rating; }
     public void setRating(double rating) { this.rating = rating; }
+
+    public int getOrgId() { return orgId; }
+    public void setOrgId(int orgId) { this.orgId = orgId; }
 
     @Override
     public String toString() {

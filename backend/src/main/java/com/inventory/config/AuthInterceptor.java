@@ -1,6 +1,7 @@
 package com.inventory.config;
 
 import com.inventory.services.AuthService;
+import com.inventory.models.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
@@ -22,7 +23,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (authService.getUserByToken(token) != null) {
+            User user = authService.getUserByToken(token);
+            if (user != null) {
+                request.setAttribute("authenticatedUser", user);
                 return true;
             }
         }
