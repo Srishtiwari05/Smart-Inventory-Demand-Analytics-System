@@ -312,14 +312,14 @@ public class ConsoleApp {
                 String username = scanner.nextLine().trim();
                 System.out.print("Password: ");
                 String password = scanner.nextLine().trim();
-                System.out.print("Role (ADMIN/MANAGER/STAFF): ");
+                System.out.print("Role (OWNER/MANAGER/STAFF): ");
                 String roleStr = scanner.nextLine().trim().toUpperCase();
                 try {
                     User.Role role = User.Role.valueOf(roleStr);
                     authService.addUser(new User(username, password, role));
                     System.out.println("User '" + username + "' created successfully.");
                 } catch (IllegalArgumentException e) {
-                    System.out.println("Invalid role. Must be ADMIN, MANAGER, or STAFF.");
+                    System.out.println("Invalid role. Must be OWNER, MANAGER, or STAFF.");
                 }
                 break;
             case 3:

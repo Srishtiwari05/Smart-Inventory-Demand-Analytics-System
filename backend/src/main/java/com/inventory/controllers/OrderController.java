@@ -2,8 +2,11 @@ package com.inventory.controllers;
 
 import com.inventory.daos.OrderDao;
 import com.inventory.services.OrderService;
+import com.inventory.services.AuthService;
+import com.inventory.models.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -14,10 +17,15 @@ public class OrderController {
 
     private final OrderService orderService = new OrderService();
     private final OrderDao orderDao = new OrderDao();
+    private final AuthService authService = AuthService.getInstance();
 
     @GetMapping
-    public List<String> getAllOrders() {
-        return orderDao.getAllOrderSummaries();
+    public ResponseEntity<?> getAllOrders(HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null || !authService.hasPermission(user, "API_VIEW_ORDERS")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
+        }
+        return ResponseEntity.ok(orderDao.getAllOrderSummaries());
     }
 
     @GetMapping("/customer/{id}")

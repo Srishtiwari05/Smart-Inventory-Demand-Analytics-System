@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 public class User {
 
     public enum Role {
-        ADMIN, MANAGER, STAFF
+        OWNER, MANAGER, STAFF
     }
 
     private int id;

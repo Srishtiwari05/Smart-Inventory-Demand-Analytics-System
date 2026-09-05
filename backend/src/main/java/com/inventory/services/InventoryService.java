@@ -1,15 +1,18 @@
 package com.inventory.services;
 
 import com.inventory.daos.ProductDao;
+import com.inventory.daos.InventoryTransactionDao;
 import com.inventory.models.Product;
 import java.util.ArrayList;
 import java.util.List;
 
 public class InventoryService {
     private ProductDao productDao;
+    private InventoryTransactionDao transactionDao;
 
     public InventoryService() {
         this.productDao = new ProductDao();
+        this.transactionDao = new InventoryTransactionDao();
     }
 
     public void addProduct(Product product) {
@@ -30,8 +33,12 @@ public class InventoryService {
     }
 
     public void updateProductStock(int productId, int newStock) {
-        if (productDao.getProductById(productId) != null) {
+        Product existing = productDao.getProductById(productId);
+        if (existing != null) {
+            int delta = newStock - existing.getStockQuantity();
             productDao.updateStock(productId, newStock);
+            String type = delta >= 0 ? "RESTOCK" : "ADJUSTMENT";
+            transactionDao.logTransaction(productId, type, delta);
         }
     }
 

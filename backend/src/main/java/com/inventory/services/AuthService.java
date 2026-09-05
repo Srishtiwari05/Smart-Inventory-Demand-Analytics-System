@@ -56,7 +56,7 @@ public class AuthService {
     /**
      * Checks if a user has permission for a given action.
      * Role hierarchy:
-     *   ADMIN   — full access
+     *   OWNER   — full access
      *   MANAGER — manage products, orders, view reports (no user management)
      *   STAFF   — view products, place orders only
      */
@@ -72,7 +72,9 @@ public class AuthService {
             case "VIEW_ORDERS":
             case "VIEW_ORDERS_BY_CUSTOMER":
             case "DSA_DEMO":
-                // All roles can do these
+            // API access (all roles)
+            case "API_VIEW_PRODUCTS":
+            case "API_VIEW_ORDERS":
                 return true;
 
             case "ADD_PRODUCT":
@@ -80,13 +82,21 @@ public class AuthService {
             case "RESTOCK_PRODUCT":
             case "VIEW_TRANSACTIONS":
             case "SALES_REPORT":
-                // MANAGER and ADMIN only
-                return role == User.Role.ADMIN || role == User.Role.MANAGER;
+            // API access (MANAGER and OWNER)
+            case "API_ADD_PRODUCT":
+            case "API_UPDATE_STOCK":
+            case "API_VIEW_TRANSACTIONS":
+            case "API_VIEW_ANALYTICS":
+            case "API_PREDICT_DEMAND":
+            case "API_ADJUST_STOCK":
+                return role == User.Role.OWNER || role == User.Role.MANAGER;
 
             case "DELETE_PRODUCT":
             case "MANAGE_USERS":
-                // ADMIN only
-                return role == User.Role.ADMIN;
+            // API access (OWNER only)
+            case "API_DELETE_PRODUCT":
+            case "API_MANAGE_USERS":
+                return role == User.Role.OWNER;
 
             default:
                 return false;

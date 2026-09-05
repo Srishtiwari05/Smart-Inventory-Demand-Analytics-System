@@ -48,21 +48,30 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<?> addProduct(@RequestBody Product product, HttpServletRequest request) {
         User user = (User) request.getAttribute("authenticatedUser");
-        if (user != null) {
-            product.setOrgId(user.getOrgId());
+        if (user == null || !authService.hasPermission(user, "API_ADD_PRODUCT")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
         }
+        product.setOrgId(user.getOrgId());
         inventoryService.addProduct(product);
         return ResponseEntity.ok("Product added successfully");
     }
 
     @PutMapping("/{id}/stock")
-    public ResponseEntity<?> updateStock(@PathVariable int id, @RequestParam int newStock) {
+    public ResponseEntity<?> updateStock(@PathVariable int id, @RequestParam int newStock, HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null || !authService.hasPermission(user, "API_UPDATE_STOCK")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
+        }
         inventoryService.updateProductStock(id, newStock);
         return ResponseEntity.ok("Stock updated successfully");
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteProduct(@PathVariable int id) {
+    public ResponseEntity<?> deleteProduct(@PathVariable int id, HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null || !authService.hasPermission(user, "API_DELETE_PRODUCT")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
+        }
         inventoryService.deleteProduct(id);
         return ResponseEntity.ok("Product deleted successfully");
     }
