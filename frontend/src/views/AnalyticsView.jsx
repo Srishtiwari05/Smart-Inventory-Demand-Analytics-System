@@ -113,11 +113,11 @@ export default function AnalyticsView() {
         </div>
       )}
 
-      {/* Reorder Recommendation */}
+      {/* Intelligent Reorder Engine */}
       <div style={{ marginTop: '40px' }} className="glass-panel">
         <div style={{ padding: '24px', borderBottom: '1px solid var(--panel-border)' }}>
-          <h2>🔁 Reorder Recommendation</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Check if a product needs restocking based on 30-day demand history.</p>
+          <h2>⚡ Intelligent Reorder Engine</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Automated reorder decision support calculating demand velocity, lead time, safety stock, and order deadlines.</p>
         </div>
         <div style={{ padding: '24px' }}>
           <form onSubmit={checkRecommendation} style={{ display: 'flex', gap: '12px', maxWidth: '400px' }}>
@@ -128,21 +128,48 @@ export default function AnalyticsView() {
               onChange={e => setProductId(e.target.value)}
               required
             />
-            <button type="submit" className="btn btn-primary">Analyze</button>
+            <button type="submit" className="btn btn-primary">⚡ Analyze Reorder</button>
           </form>
 
           {recommendation && (
-            <div style={{ marginTop: '24px', padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-              <h3 style={{ marginBottom: '12px' }}>{recommendation.product?.name} <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>(ID #{recommendation.product?.id})</span></h3>
-              <span className={`badge ${recommendation.needsReorder ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.9rem', padding: '6px 14px' }}>
-                {recommendation.needsReorder ? '⚠ Reorder Needed' : '✓ Stock Healthy'}
-              </span>
-              <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>{recommendation.reason}</p>
-              {recommendation.needsReorder && (
-                <p style={{ marginTop: '8px', fontWeight: 700, color: 'var(--warning)', fontSize: '1.1rem' }}>
-                  Recommended Reorder: {recommendation.recommendedAmount} units
-                </p>
-              )}
+            <div style={{ marginTop: '24px', padding: '24px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <h3 style={{ fontSize: '1.2rem', margin: 0 }}>{recommendation.product?.name} <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>(ID #{recommendation.product?.id})</span></h3>
+                <span className={`badge ${recommendation.actionRequired ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.85rem', padding: '6px 14px' }}>
+                  {recommendation.actionRequired ? '⚡ ACTION REQUIRED' : '✓ HEALTHY STOCK'}
+                </span>
+              </div>
+
+              <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Recommended Order Qty</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: recommendation.actionRequired ? '#f87171' : '#4ade80', marginTop: '4px' }}>
+                    {recommendation.recommendedReorderQuantity} <span style={{ fontSize: '0.85rem' }}>units</span>
+                  </div>
+                </div>
+                <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Order Deadline</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fb923c', marginTop: '4px' }}>
+                    {recommendation.orderDeadlineDays === 0 ? 'IMMEDIATE' : `Within ${recommendation.orderDeadlineDays} days`}
+                  </div>
+                </div>
+                <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Expected Stockout</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#facc15', marginTop: '4px' }}>
+                    In {recommendation.expectedStockoutDays} days
+                  </div>
+                </div>
+                <div style={{ padding: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Safety Stock / ROP</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>
+                    {recommendation.safetyStock} / {recommendation.reorderPoint} <span style={{ fontSize: '0.85rem' }}>units</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '16px', padding: '14px 18px', background: 'rgba(0,0,0,0.3)', borderLeft: `4px solid ${recommendation.actionRequired ? '#f87171' : '#4ade80'}`, borderRadius: '0 8px 8px 0', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                {recommendation.reason}
+              </div>
             </div>
           )}
         </div>

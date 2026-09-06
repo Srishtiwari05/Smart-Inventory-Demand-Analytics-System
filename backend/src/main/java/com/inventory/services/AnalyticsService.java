@@ -50,27 +50,64 @@ public class AnalyticsService {
         if (p == null) return null;
 
         Supplier s = supplierDao.getSupplierById(p.getSupplierId());
-        int leadTimeDays = (s != null) ? s.getLeadTimeDays() : 5; // default 5 if no supplier
+        int leadTimeDays = (s != null && s.getLeadTimeDays() > 0) ? s.getLeadTimeDays() : 5;
         
         double dailyDemand = calculateHistoricalDailyDemand(productId);
+        if (dailyDemand <= 0) dailyDemand = 1.0;
         
-        // Reorder Point = (Lead Time * Daily Demand) + Safety Stock (assume 10% buffer)
-        int safetyStock = (int) Math.ceil((leadTimeDays * dailyDemand) * 0.10);
+        int currentStock = p.getStockQuantity();
+
+        // Safety Stock = 15% buffer on lead time demand
+        int safetyStock = (int) Math.ceil((leadTimeDays * dailyDemand) * 0.15);
         int reorderPoint = (int) Math.ceil(leadTimeDays * dailyDemand) + safetyStock;
-        
-        boolean needsReorder = p.getStockQuantity() <= reorderPoint;
-        
+
+        boolean needsReorder = currentStock <= reorderPoint;
+        int expectedStockoutDays = (int) Math.floor(currentStock / dailyDemand);
+        int orderDeadlineDays = Math.max(0, (int) Math.floor((currentStock - safetyStock) / dailyDemand) - leadTimeDays);
+
         int recommendedAmount = 0;
-        String reason = "Stock level (" + p.getStockQuantity() + ") is healthy.";
-        
-        if (needsReorder) {
-            // Reorder up to double the reorder point
-            recommendedAmount = (reorderPoint * 2) - p.getStockQuantity();
-            reason = String.format("⚠️ Reorder recommended because projected demand (%.1f units/day) over the supplier's lead time (%d days) exceeds available inventory by %d units (including safety stock).",
-                    dailyDemand, leadTimeDays, (reorderPoint - p.getStockQuantity()));
+        String riskLevel;
+        String reason;
+
+        if (currentStock <= safetyStock) {
+            riskLevel = "CRITICAL";
+            recommendedAmount = (reorderPoint * 2) - currentStock;
+            if (recommendedAmount <= 0) recommendedAmount = 50;
+            reason = String.format("🔴 CRITICAL: Stock (%d) is at/below safety stock (%d). Projected stockout in %d days. Place order immediately for %d units.",
+                    currentStock, safetyStock, expectedStockoutDays, recommendedAmount);
+            orderDeadlineDays = 0;
+        } else if (needsReorder) {
+            riskLevel = "RISK";
+            recommendedAmount = (reorderPoint * 2) - currentStock;
+            reason = String.format("🟠 REORDER NEEDED: Stock (%d) is below reorder point (%d). Demand of %.1f units/day over %d days lead time requires %d units within %d days.",
+                    currentStock, reorderPoint, dailyDemand, leadTimeDays, recommendedAmount, Math.max(1, orderDeadlineDays));
+        } else if (currentStock <= reorderPoint * 1.5) {
+            riskLevel = "WATCH";
+            reason = String.format("🟡 WATCH: Stock (%d) is approaching reorder point (%d). Expected stockout in %d days. No immediate reorder required.",
+                    currentStock, reorderPoint, expectedStockoutDays);
+        } else {
+            riskLevel = "HEALTHY";
+            reason = String.format("🟢 HEALTHY: Stock (%d) is sufficient. Buffer for %d days at current demand (%.1f units/day).",
+                    currentStock, expectedStockoutDays, dailyDemand);
         }
 
-        return new ReorderRecommendation(p, recommendedAmount, reason, needsReorder);
+        return new ReorderRecommendation(
+                p, riskLevel, currentStock, dailyDemand, leadTimeDays,
+                safetyStock, reorderPoint, recommendedAmount,
+                orderDeadlineDays, expectedStockoutDays, reason, needsReorder
+        );
+    }
+
+    public List<ReorderRecommendation> getAllReorderRecommendations() {
+        List<Product> products = productDao.getAllProducts();
+        List<ReorderRecommendation> list = new ArrayList<>();
+        for (Product p : products) {
+            ReorderRecommendation rec = getReorderRecommendation(p.getId());
+            if (rec != null) {
+                list.add(rec);
+            }
+        }
+        return list;
     }
 
     /**

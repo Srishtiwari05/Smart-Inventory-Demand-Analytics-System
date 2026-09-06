@@ -75,6 +75,7 @@ public class AuthService {
             // API access (all roles)
             case "API_VIEW_PRODUCTS":
             case "API_VIEW_ORDERS":
+            case "API_CREATE_PR":
                 return true;
 
             case "ADD_PRODUCT":
@@ -89,6 +90,11 @@ public class AuthService {
             case "API_VIEW_ANALYTICS":
             case "API_PREDICT_DEMAND":
             case "API_ADJUST_STOCK":
+            case "API_VIEW_POS":
+            case "API_MANAGE_POS":
+            case "API_VIEW_SUPPLIERS":
+            case "API_APPROVE_PR":
+            case "API_MANAGE_QUOTATIONS":
                 return role == User.Role.OWNER || role == User.Role.MANAGER;
 
             case "DELETE_PRODUCT":

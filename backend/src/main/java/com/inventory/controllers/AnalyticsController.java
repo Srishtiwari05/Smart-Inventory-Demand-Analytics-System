@@ -19,6 +19,15 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService = new AnalyticsService();
     private final AuthService authService = AuthService.getInstance();
 
+    @GetMapping("/recommendations")
+    public ResponseEntity<?> getAllRecommendations(HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null || !authService.hasPermission(user, "API_VIEW_ANALYTICS")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
+        }
+        return ResponseEntity.ok(analyticsService.getAllReorderRecommendations());
+    }
+
     @GetMapping("/recommendations/{productId}")
     public ResponseEntity<?> getRecommendation(@PathVariable int productId, HttpServletRequest request) {
         User user = (User) request.getAttribute("authenticatedUser");

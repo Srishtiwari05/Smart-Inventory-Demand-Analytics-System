@@ -5,9 +5,11 @@ import AnalyticsView from './views/AnalyticsView';
 import CustomersView from './views/CustomersView';
 import SuppliersView from './views/SuppliersView';
 import TransactionsView from './views/TransactionsView';
+import PurchaseOrdersView from './views/PurchaseOrdersView';
 
 const ROLE_BADGE = {
-  ADMIN: { bg: 'rgba(239,68,68,0.2)', color: '#f87171', label: 'Admin' },
+  OWNER: { bg: 'rgba(239,68,68,0.2)', color: '#f87171', label: 'Owner' },
+  ADMIN: { bg: 'rgba(239,68,68,0.2)', color: '#f87171', label: 'Owner' },
   MANAGER: { bg: 'rgba(139,92,246,0.2)', color: '#a78bfa', label: 'Manager' },
   STAFF: { bg: 'rgba(34,197,94,0.2)', color: '#4ade80', label: 'Staff' },
 };
@@ -15,17 +17,18 @@ const ROLE_BADGE = {
 export default function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('products');
   const role = user?.role;
-  const isAdmin = role === 'ADMIN';
-  const isManager = isAdmin || role === 'MANAGER';
+  const isOwner = role === 'OWNER' || role === 'ADMIN';
+  const isManager = isOwner || role === 'MANAGER';
   const badge = ROLE_BADGE[role] || ROLE_BADGE.STAFF;
 
   const tabs = [
-    { id: 'products',     icon: '📦', label: 'Products',     show: true },
-    { id: 'orders',       icon: '🛒', label: 'Orders',       show: true },
-    { id: 'customers',    icon: '👥', label: 'Customers',    show: true },
-    { id: 'analytics',    icon: '📈', label: 'Analytics',    show: isManager },
-    { id: 'suppliers',    icon: '🚚', label: 'Suppliers',    show: isManager },
-    { id: 'transactions', icon: '🔄', label: 'Transactions', show: isManager },
+    { id: 'products',        icon: '📦', label: 'Products',        show: true },
+    { id: 'orders',          icon: '🛒', label: 'Orders',          show: true },
+    { id: 'purchase_orders', icon: '📝', label: 'Purchase Orders', show: isManager },
+    { id: 'customers',       icon: '👥', label: 'Customers',       show: true },
+    { id: 'analytics',       icon: '📈', label: 'Analytics',       show: isManager },
+    { id: 'suppliers',       icon: '🚚', label: 'Suppliers',       show: isManager },
+    { id: 'transactions',    icon: '🔄', label: 'Transactions',    show: isManager },
   ].filter(t => t.show);
 
   return (
@@ -59,12 +62,13 @@ export default function Dashboard({ user, onLogout }) {
       </nav>
 
       <main className="main-content">
-        {activeTab === 'products'     && <ProductsView     user={user} />}
-        {activeTab === 'orders'       && <OrdersView       user={user} />}
-        {activeTab === 'analytics'    && <AnalyticsView    user={user} />}
-        {activeTab === 'customers'    && <CustomersView    user={user} />}
-        {activeTab === 'suppliers'    && <SuppliersView    user={user} />}
-        {activeTab === 'transactions' && <TransactionsView user={user} />}
+        {activeTab === 'products'        && <ProductsView        user={user} />}
+        {activeTab === 'orders'          && <OrdersView          user={user} />}
+        {activeTab === 'purchase_orders' && <PurchaseOrdersView user={user} />}
+        {activeTab === 'analytics'       && <AnalyticsView       user={user} />}
+        {activeTab === 'customers'       && <CustomersView       user={user} />}
+        {activeTab === 'suppliers'       && <SuppliersView       user={user} />}
+        {activeTab === 'transactions'    && <TransactionsView    user={user} />}
       </main>
     </div>
   );
