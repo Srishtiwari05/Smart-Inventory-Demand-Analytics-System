@@ -72,11 +72,15 @@ public class AuthService {
             case "VIEW_ORDERS":
             case "VIEW_ORDERS_BY_CUSTOMER":
             case "DSA_DEMO":
-            // API access (all roles)
+            case "API_SUPPLIER_PORTAL":
+                return role == User.Role.SUPPLIER || role == User.Role.OWNER || role == User.Role.MANAGER;
+
+            // API access (internal roles)
             case "API_VIEW_PRODUCTS":
             case "API_VIEW_ORDERS":
             case "API_CREATE_PR":
-                return true;
+            case "API_VIEW_ALERTS":
+                return role != User.Role.SUPPLIER;
 
             case "ADD_PRODUCT":
             case "UPDATE_STOCK":
@@ -95,6 +99,7 @@ public class AuthService {
             case "API_VIEW_SUPPLIERS":
             case "API_APPROVE_PR":
             case "API_MANAGE_QUOTATIONS":
+            case "API_MANAGE_ALERTS":
                 return role == User.Role.OWNER || role == User.Role.MANAGER;
 
             case "DELETE_PRODUCT":

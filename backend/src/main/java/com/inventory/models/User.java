@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 public class User {
 
     public enum Role {
-        OWNER, MANAGER, STAFF
+        OWNER, MANAGER, STAFF, SUPPLIER
     }
 
     private int id;
@@ -14,6 +14,7 @@ public class User {
     private Role role;
     private Timestamp createdAt;
     private int orgId;
+    private Integer supplierId;
 
     public User(int id, String username, String password, Role role, Timestamp createdAt, int orgId) {
         this.id = id;
@@ -22,6 +23,16 @@ public class User {
         this.role = role;
         this.createdAt = createdAt;
         this.orgId = orgId;
+    }
+
+    public User(int id, String username, String password, Role role, Timestamp createdAt, int orgId, Integer supplierId) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.orgId = orgId;
+        this.supplierId = supplierId;
     }
 
     public User(String username, String password, Role role) {
@@ -48,9 +59,12 @@ public class User {
     public int getOrgId() { return orgId; }
     public void setOrgId(int orgId) { this.orgId = orgId; }
 
+    public Integer getSupplierId() { return supplierId; }
+    public void setSupplierId(Integer supplierId) { this.supplierId = supplierId; }
+
     @Override
     public String toString() {
-        return String.format("User [ID=%d, Username=%s, Role=%s, CreatedAt=%s]",
-                id, username, role, createdAt);
+        return String.format("User [ID=%d, Username=%s, Role=%s, OrgId=%d, SupplierId=%s, CreatedAt=%s]",
+                id, username, role, orgId, supplierId, createdAt);
     }
 }

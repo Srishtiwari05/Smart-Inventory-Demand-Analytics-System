@@ -25,3 +25,4 @@ hs_err_pid*
 # Build folders
 backend/bin/
 backend/target/
+backend/apache-maven-*/

@@ -1,4 +1,4 @@
--- Phase 10: Production-Grade Business Data Model
+    -- Phase 10: Production-Grade Business Data Model
 -- Run this ONCE against smart_inventory. It uses ALTER TABLE (non-destructive).
 -- Existing data is preserved and assigned to org_id=1 (Demo Business) by default.
 
