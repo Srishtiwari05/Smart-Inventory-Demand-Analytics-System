@@ -1,6 +1,7 @@
 package com.inventory.controllers;
 
 import com.inventory.models.InventoryRiskReport;
+import com.inventory.models.OperationalKpi;
 import com.inventory.models.ReorderRecommendation;
 import com.inventory.models.SimulationResult;
 import com.inventory.services.AnalyticsService;
@@ -35,9 +36,7 @@ public class AnalyticsController {
             return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
         }
         ReorderRecommendation rec = analyticsService.getReorderRecommendation(productId);
-        if (rec != null) {
-            return ResponseEntity.ok(rec);
-        }
+        if (rec != null) return ResponseEntity.ok(rec);
         return ResponseEntity.notFound().build();
     }
 
@@ -46,17 +45,15 @@ public class AnalyticsController {
             @PathVariable int productId,
             @RequestParam(defaultValue = "1.0") double demandMultiplier,
             @RequestParam(defaultValue = "0") int extraLeadTime,
+            @RequestParam(defaultValue = "0.0") double priceAdjustment,
             HttpServletRequest request) {
 
         User user = (User) request.getAttribute("authenticatedUser");
         if (user == null || !authService.hasPermission(user, "API_VIEW_ANALYTICS")) {
             return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
         }
-
-        SimulationResult result = analyticsService.simulateScenario(productId, demandMultiplier, extraLeadTime);
-        if (result != null) {
-            return ResponseEntity.ok(result);
-        }
+        SimulationResult result = analyticsService.simulateScenario(productId, demandMultiplier, extraLeadTime, priceAdjustment);
+        if (result != null) return ResponseEntity.ok(result);
         return ResponseEntity.notFound().build();
     }
 
@@ -76,9 +73,16 @@ public class AnalyticsController {
             return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
         }
         InventoryRiskReport report = analyticsService.analyzeRisk(productId);
-        if (report != null) {
-            return ResponseEntity.ok(report);
-        }
+        if (report != null) return ResponseEntity.ok(report);
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/kpi")
+    public ResponseEntity<?> getOperationalKpi(HttpServletRequest request) {
+        User user = (User) request.getAttribute("authenticatedUser");
+        if (user == null || !authService.hasPermission(user, "API_VIEW_ANALYTICS")) {
+            return ResponseEntity.status(403).body("Forbidden: Insufficient privileges.");
+        }
+        return ResponseEntity.ok(analyticsService.getOperationalKpi(user.getOrgId()));
     }
 }

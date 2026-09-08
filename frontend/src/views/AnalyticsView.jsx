@@ -7,11 +7,21 @@ const RISK_STYLES = {
   HEALTHY:  { bg: 'rgba(34,197,94,0.1)',   color: '#4ade80', border: '#4ade80', label: '🟢 HEALTHY' },
 };
 
+function ComparisonRow({ label, value, highlight }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.88rem' }}>
+      <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ fontWeight: 600, color: highlight ? '#fb923c' : 'var(--text-primary)' }}>{value}</span>
+    </div>
+  );
+}
+
+
 export default function AnalyticsView() {
   const [report, setReport] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
   const [productId, setProductId] = useState('');
-  const [sim, setSim] = useState({ productId: '', demandMultiplier: '1.5', extraLeadTime: '5' });
+  const [sim, setSim] = useState({ productId: '', demandMultiplier: '1.5', extraLeadTime: '5', priceAdjustment: '0' });
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [riskReport, setRiskReport] = useState([]);
@@ -60,7 +70,8 @@ export default function AnalyticsView() {
     try {
       const params = new URLSearchParams({
         demandMultiplier: sim.demandMultiplier,
-        extraLeadTime: sim.extraLeadTime
+        extraLeadTime: sim.extraLeadTime,
+        priceAdjustment: sim.priceAdjustment
       });
       const res = await fetch(`/api/analytics/simulate/${sim.productId}?${params}`, {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
@@ -175,57 +186,138 @@ export default function AnalyticsView() {
         </div>
       </div>
 
-      {/* What-If Simulator */}
+      {/* What-If Inventory Simulator — Phase 20 */}
       <div style={{ marginTop: '32px' }} className="glass-panel">
         <div style={{ padding: '24px', borderBottom: '1px solid var(--panel-border)' }}>
-          <h2>🧪 What-If Simulator</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Simulate a demand spike or supply chain delay and see the projected impact.</p>
+          <h2>🧪 What-If Inventory Simulator</h2>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Model supply chain disruptions — demand spikes, supplier delays, and cost inflation — and compare Baseline vs Simulated outcomes side-by-side without touching real inventory.</p>
         </div>
         <div style={{ padding: '24px' }}>
-          <form onSubmit={runSimulation} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div className="input-group" style={{ marginBottom: 0, width: '140px' }}>
-              <label>Product ID</label>
-              <input type="number" required value={sim.productId} onChange={e => setSim({ ...sim, productId: e.target.value })} />
+
+          {/* Controls */}
+          <form onSubmit={runSimulation}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'end' }}>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Product ID</label>
+                <input id="sim-product-id" type="number" required value={sim.productId}
+                  onChange={e => setSim({ ...sim, productId: e.target.value })} placeholder="e.g. 1" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Demand Multiplier — <strong style={{ color: '#c4b5fd' }}>{sim.demandMultiplier}×</strong>
+                </label>
+                <input id="sim-demand" type="range" min="0.5" max="3.0" step="0.1" value={sim.demandMultiplier}
+                  onChange={e => setSim({ ...sim, demandMultiplier: e.target.value })}
+                  style={{ accentColor: '#7c3aed', cursor: 'pointer' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)' }}><span>0.5×</span><span>3.0×</span></div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Supplier Delay — <strong style={{ color: '#fb923c' }}>+{sim.extraLeadTime} days</strong>
+                </label>
+                <input id="sim-lead-time" type="range" min="0" max="30" step="1" value={sim.extraLeadTime}
+                  onChange={e => setSim({ ...sim, extraLeadTime: e.target.value })}
+                  style={{ accentColor: '#ea580c', cursor: 'pointer' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)' }}><span>0 days</span><span>30 days</span></div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Price Inflation — <strong style={{ color: '#34d399' }}>{sim.priceAdjustment >= 0 ? '+' : ''}{sim.priceAdjustment}%</strong>
+                </label>
+                <input id="sim-price" type="range" min="-20" max="50" step="1" value={sim.priceAdjustment}
+                  onChange={e => setSim({ ...sim, priceAdjustment: e.target.value })}
+                  style={{ accentColor: '#059669', cursor: 'pointer' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)' }}><span>-20%</span><span>+50%</span></div>
+              </div>
             </div>
-            <div className="input-group" style={{ marginBottom: 0, width: '180px' }}>
-              <label>Demand Multiplier (e.g. 1.5)</label>
-              <input type="number" step="0.1" min="0.1" max="10" value={sim.demandMultiplier} onChange={e => setSim({ ...sim, demandMultiplier: e.target.value })} />
-            </div>
-            <div className="input-group" style={{ marginBottom: 0, width: '180px' }}>
-              <label>Extra Lead Time (days)</label>
-              <input type="number" min="0" max="60" value={sim.extraLeadTime} onChange={e => setSim({ ...sim, extraLeadTime: e.target.value })} />
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ height: '46px' }} disabled={simLoading}>
-              {simLoading ? 'Running...' : '▶ Run Simulation'}
+            <button id="sim-run-btn" type="submit" className="btn btn-primary" style={{ marginTop: '20px' }} disabled={simLoading}>
+              {simLoading ? '⏳ Running simulation...' : '▶ Run Simulation'}
             </button>
           </form>
 
-          {simResult && (
-            <div style={{ marginTop: '28px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Product</div>
-                <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{simResult.product?.name}</div>
-              </div>
-              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Current Stock</div>
-                <div style={{ fontWeight: 700, fontSize: '1.5rem' }}>{simResult.currentStock} <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>units</span></div>
-              </div>
-              <div style={{ padding: '20px', background: 'rgba(139,92,246,0.15)', borderRadius: '12px', border: '1px solid #7c3aed' }}>
-                <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Projected Demand</div>
-                <div style={{ fontWeight: 700, fontSize: '1.5rem', color: '#c4b5fd' }}>{simResult.projectedDemand?.toFixed(1)} <span style={{ fontSize: '0.9rem' }}>units/day</span></div>
-              </div>
-              <div style={{ padding: '20px', background: simResult.stockoutRisk ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.1)', borderRadius: '12px', border: `1px solid ${simResult.stockoutRisk ? '#f87171' : '#4ade80'}` }}>
-                <div style={{ fontSize: '0.8rem', color: simResult.stockoutRisk ? '#f87171' : '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Stockout Risk</div>
-                <div style={{ fontWeight: 700, fontSize: '1.5rem', color: simResult.stockoutRisk ? '#fca5a5' : '#86efac' }}>
-                  {simResult.stockoutRisk ? '⚠ HIGH' : '✓ LOW'}
+          {/* Side-by-Side Results */}
+          {simResult && (() => {
+            const bRisk = RISK_STYLES[simResult.baseRiskLevel] || RISK_STYLES.HEALTHY;
+            const sRisk = RISK_STYLES[simResult.simRiskLevel] || RISK_STYLES.HEALTHY;
+            const riskChanged = simResult.baseRiskLevel !== simResult.simRiskLevel;
+            const costDelta = simResult.estimatedCostDelta ?? 0;
+            const qtyDelta = simResult.reorderQtyDelta ?? 0;
+            const daysDelta = simResult.stockoutDaysDelta ?? 0;
+            return (
+              <div style={{ marginTop: '32px' }}>
+                {/* Scenario Description */}
+                <div style={{ padding: '12px 18px', background: 'rgba(124,58,237,0.12)', border: '1px solid #7c3aed', borderRadius: '10px', marginBottom: '20px', fontSize: '0.9rem', color: '#c4b5fd' }}>
+                  📋 <strong>Scenario:</strong> {simResult.scenarioDescription}
+                </div>
+
+                {/* Comparison Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  {/* Baseline */}
+                  <div style={{ padding: '20px', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px', fontWeight: 700 }}>📊 Baseline (Current)</div>
+                    <ComparisonRow label="Daily Demand" value={`${simResult.baseDailyDemand?.toFixed(2)} units/day`} />
+                    <ComparisonRow label="Lead Time" value={`${simResult.baseLeadTimeDays} days`} />
+                    <ComparisonRow label="Safety Stock" value={`${simResult.baseSafetyStock} units`} />
+                    <ComparisonRow label="Reorder Point" value={`${simResult.baseReorderPoint} units`} />
+                    <ComparisonRow label="Stockout In" value={`${simResult.baseExpectedStockoutDays} days`} />
+                    <ComparisonRow label="Required Order" value={`${simResult.currentRequiredReorder} units`} />
+                    <div style={{ marginTop: '12px', display: 'inline-block', padding: '4px 12px', background: bRisk.bg, color: bRisk.color, borderRadius: '6px', border: `1px solid ${bRisk.border}`, fontSize: '0.82rem', fontWeight: 600 }}>
+                      {bRisk.label}
+                    </div>
+                  </div>
+
+                  {/* Simulated */}
+                  <div style={{ padding: '20px', background: riskChanged ? 'rgba(239,68,68,0.07)' : 'rgba(255,255,255,0.04)', borderRadius: '12px', border: `1px solid ${riskChanged ? '#f87171' : 'var(--panel-border)'}` }}>
+                    <div style={{ fontSize: '0.75rem', color: riskChanged ? '#f87171' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px', fontWeight: 700 }}>⚠️ Simulated Scenario</div>
+                    <ComparisonRow label="Daily Demand" value={`${simResult.simDailyDemand?.toFixed(2)} units/day`} highlight={simResult.simDailyDemand > simResult.baseDailyDemand} />
+                    <ComparisonRow label="Lead Time" value={`${simResult.simLeadTimeDays} days`} highlight={simResult.simLeadTimeDays > simResult.baseLeadTimeDays} />
+                    <ComparisonRow label="Safety Stock" value={`${simResult.simSafetyStock} units`} highlight={simResult.simSafetyStock > simResult.baseSafetyStock} />
+                    <ComparisonRow label="Reorder Point" value={`${simResult.simReorderPoint} units`} highlight={simResult.simReorderPoint > simResult.baseReorderPoint} />
+                    <ComparisonRow label="Stockout In" value={`${simResult.simExpectedStockoutDays} days`} highlight={simResult.simExpectedStockoutDays < simResult.baseExpectedStockoutDays} />
+                    <ComparisonRow label="Required Order" value={`${simResult.simulatedRequiredReorder} units`} highlight={simResult.simulatedRequiredReorder > simResult.currentRequiredReorder} />
+                    <div style={{ marginTop: '12px', display: 'inline-block', padding: '4px 12px', background: sRisk.bg, color: sRisk.color, borderRadius: '6px', border: `1px solid ${sRisk.border}`, fontSize: '0.82rem', fontWeight: 600 }}>
+                      {sRisk.label}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delta & Financial Impact */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                  <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', border: '1px solid var(--panel-border)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Stockout Δ</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 700, color: daysDelta < 0 ? '#f87171' : '#4ade80' }}>
+                      {daysDelta >= 0 ? '+' : ''}{daysDelta} days
+                    </div>
+                  </div>
+                  <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', border: '1px solid var(--panel-border)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Order Qty Δ</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 700, color: qtyDelta > 0 ? '#fb923c' : '#4ade80' }}>
+                      {qtyDelta >= 0 ? '+' : ''}{qtyDelta} units
+                    </div>
+                  </div>
+                  <div style={{ padding: '16px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', border: '1px solid var(--panel-border)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>Financial Impact</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 700, color: costDelta > 0 ? '#f87171' : '#4ade80' }}>
+                      {costDelta >= 0 ? '+' : ''}${Math.abs(costDelta).toFixed(2)}
+                    </div>
+                  </div>
+                  {riskChanged && (
+                    <div style={{ padding: '16px', background: 'rgba(239,68,68,0.12)', borderRadius: '10px', border: '1px solid #f87171', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#f87171', textTransform: 'uppercase', marginBottom: '6px' }}>Risk Shift</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fca5a5' }}>
+                        {simResult.baseRiskLevel} → {simResult.simRiskLevel}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Explanation */}
+                <div style={{ marginTop: '16px', padding: '16px 20px', background: 'rgba(0,0,0,0.3)', borderLeft: `4px solid ${riskChanged ? '#f87171' : '#7c3aed'}`, borderRadius: '0 10px 10px 0', color: 'var(--text-primary)', lineHeight: 1.6, fontSize: '0.92rem' }}>
+                  {simResult.explanation}
                 </div>
               </div>
-              <div style={{ padding: '20px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid var(--panel-border)', gridColumn: 'span 2' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Recommendation</div>
-                <div style={{ color: 'var(--text-primary)', lineHeight: 1.6 }}>{simResult.recommendation}</div>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

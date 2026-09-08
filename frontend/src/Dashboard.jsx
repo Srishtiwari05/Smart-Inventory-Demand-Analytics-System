@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import OverviewView from './views/OverviewView';
 import ProductsView from './views/ProductsView';
 import OrdersView from './views/OrdersView';
 import AnalyticsView from './views/AnalyticsView';
@@ -18,10 +19,14 @@ const ROLE_BADGE = {
 };
 
 export default function Dashboard({ user, onLogout }) {
-  const [activeTab, setActiveTab] = useState('products');
+  const role = user?.role;
+  const isOwner = role === 'OWNER' || role === 'ADMIN';
+  const isManager = isOwner || role === 'MANAGER';
+  const badge = ROLE_BADGE[role] || ROLE_BADGE.STAFF;
+
+  const [activeTab, setActiveTab] = useState(isManager ? 'overview' : 'products');
   const [unreadAlerts, setUnreadAlerts] = useState(0);
 
-  const role = user?.role;
   if (role === 'SUPPLIER') {
     return (
       <div className="app-container">
@@ -46,10 +51,6 @@ export default function Dashboard({ user, onLogout }) {
     );
   }
 
-  const isOwner = role === 'OWNER' || role === 'ADMIN';
-  const isManager = isOwner || role === 'MANAGER';
-  const badge = ROLE_BADGE[role] || ROLE_BADGE.STAFF;
-
   const fetchAlertCount = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -72,6 +73,7 @@ export default function Dashboard({ user, onLogout }) {
   }, [activeTab]);
 
   const tabs = [
+    { id: 'overview',        icon: '🏠', label: 'Overview',        show: isManager },
     { id: 'products',        icon: '📦', label: 'Products',        show: true },
     { id: 'orders',          icon: '🛒', label: 'Orders',          show: true },
     { id: 'purchase_orders', icon: '📝', label: 'Purchase Orders', show: isManager },
@@ -129,6 +131,7 @@ export default function Dashboard({ user, onLogout }) {
       </nav>
 
       <main className="main-content">
+        {activeTab === 'overview'        && <OverviewView        user={user} onNavigate={setActiveTab} />}
         {activeTab === 'products'        && <ProductsView        user={user} />}
         {activeTab === 'orders'          && <OrdersView          user={user} />}
         {activeTab === 'purchase_orders' && <PurchaseOrdersView user={user} />}
@@ -141,4 +144,3 @@ export default function Dashboard({ user, onLogout }) {
     </div>
   );
 }
-
