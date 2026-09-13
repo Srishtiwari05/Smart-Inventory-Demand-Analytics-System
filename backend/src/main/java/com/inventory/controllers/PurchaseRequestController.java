@@ -4,6 +4,7 @@ import com.inventory.models.PurchaseOrder;
 import com.inventory.models.PurchaseRequest;
 import com.inventory.models.PurchaseRequestItem;
 import com.inventory.models.User;
+import com.inventory.services.AuditLogService;
 import com.inventory.services.AuthService;
 import com.inventory.services.PurchaseRequestService;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ public class PurchaseRequestController {
 
     private final PurchaseRequestService prService = new PurchaseRequestService();
     private final AuthService authService = AuthService.getInstance();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     @GetMapping
     public ResponseEntity<?> getPurchaseRequests(HttpServletRequest request) {
@@ -50,6 +52,12 @@ public class PurchaseRequestController {
                 return i;
             }).toList();
             PurchaseRequest pr = prService.createPurchaseRequest(user.getOrgId(), user.getId(), supplierId, items);
+
+            double totalCost = items.stream().mapToDouble(i -> i.getQuantity() * i.getEstimatedUnitCost()).sum();
+            // Audit log
+            auditLogService.log(user.getOrgId(), user.getId(), "CREATE_PURCHASE_REQUEST", "PURCHASE_REQUEST", pr.getId(),
+                    "Created Purchase Request #" + pr.getId() + " (" + items.size() + " items, total: $" + String.format("%.2f", totalCost) + ")");
+
             return ResponseEntity.ok(pr);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -67,6 +75,11 @@ public class PurchaseRequestController {
         try {
             PurchaseRequest pr = prService.approve(id, user.getOrgId(), user.getId());
             if (pr == null) return ResponseEntity.notFound().build();
+
+            // Audit log
+            auditLogService.log(user.getOrgId(), user.getId(), "APPROVE_PURCHASE_REQUEST", "PURCHASE_REQUEST", id,
+                    "Approved Purchase Request #" + id);
+
             return ResponseEntity.ok(pr);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -80,9 +93,14 @@ public class PurchaseRequestController {
             return ResponseEntity.status(403).body("Forbidden");
         }
         try {
-            String reason = body.getOrDefault("reason", "");
+            String reason = body != null ? body.getOrDefault("reason", "") : "";
             PurchaseRequest pr = prService.reject(id, user.getOrgId(), user.getId(), reason);
             if (pr == null) return ResponseEntity.notFound().build();
+
+            // Audit log
+            auditLogService.log(user.getOrgId(), user.getId(), "REJECT_PURCHASE_REQUEST", "PURCHASE_REQUEST", id,
+                    "Rejected Purchase Request #" + id + (!reason.isBlank() ? ". Reason: " + reason : ""));
+
             return ResponseEntity.ok(pr);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -98,6 +116,11 @@ public class PurchaseRequestController {
         try {
             PurchaseOrder po = prService.convertToPurchaseOrder(id, user.getOrgId());
             if (po == null) return ResponseEntity.notFound().build();
+
+            // Audit log
+            auditLogService.log(user.getOrgId(), user.getId(), "CONVERT_PR_TO_PO", "PURCHASE_ORDER", po.getId(),
+                    "Converted Purchase Request #" + id + " into Purchase Order " + po.getPoNumber());
+
             return ResponseEntity.ok(po);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

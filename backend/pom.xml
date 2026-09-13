@@ -26,6 +26,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Boot JDBC Starter for HikariCP Connection Pooling -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+
         <!-- Keep raw MySQL JDBC for Phase 4 transition -->
         <dependency>
             <groupId>com.mysql</groupId>

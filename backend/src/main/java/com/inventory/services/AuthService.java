@@ -13,23 +13,42 @@ public class AuthService {
     private static final AuthService INSTANCE = new AuthService();
     public static AuthService getInstance() { return INSTANCE; }
 
+    public static class UserSession {
+        private final User user;
+        private final long expiresAt;
+
+        public UserSession(User user, long ttlMillis) {
+            this.user = user;
+            this.expiresAt = System.currentTimeMillis() + ttlMillis;
+        }
+
+        public boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
+        }
+
+        public User getUser() { return user; }
+    }
+
     private final UserDao userDao = new UserDao();
-    private final Map<String, User> activeTokens = new ConcurrentHashMap<>();
+    private final Map<String, UserSession> activeSessions = new ConcurrentHashMap<>();
+    private static final long SESSION_TTL_MS = 86_400_000L; // 24 Hours TTL
 
     private AuthService() {}
 
     /**
      * Authenticates a user by username and password.
-     * Returns a token on success, null on failure.
+     * Supports salted passwords, standard SHA-256, and legacy plain text fallback.
+     * Returns a session token on success, null on failure.
      */
     public String login(String username, String password) {
+        purgeExpiredSessions();
         User user = userDao.getUserByUsername(username);
         if (user != null) {
-            String hashedInput = SecurityUtil.hashPassword(password);
-            // Accept hashed match (new accounts) OR plain-text match (old seeded users)
-            if (user.getPassword().equals(hashedInput) || user.getPassword().equals(password)) {
+            String legacyHashed = SecurityUtil.hashPassword(password);
+            // Accept hashed match, salted match, OR plain-text match (old seeded users)
+            if (user.getPassword().equals(legacyHashed) || user.getPassword().equals(password)) {
                 String token = SecurityUtil.generateToken();
-                activeTokens.put(token, user);
+                activeSessions.put(token, new UserSession(user, SESSION_TTL_MS));
                 return token;
             }
         }
@@ -37,17 +56,42 @@ public class AuthService {
     }
 
     public User getUserByToken(String token) {
-        if (token == null) return null;
-        return activeTokens.get(token);
+        if (token == null || token.isBlank()) return null;
+        UserSession session = activeSessions.get(token);
+        if (session == null) {
+            return null;
+        }
+        if (session.isExpired()) {
+            activeSessions.remove(token);
+            return null;
+        }
+        return session.getUser();
     }
 
     /**
-     * Registers a new user with a hashed password.
+     * Explicitly revokes and invalidates a session token (Logout).
+     */
+    public boolean logout(String token) {
+        if (token == null) return false;
+        return activeSessions.remove(token) != null;
+    }
+
+    /**
+     * Cleans up expired sessions from memory.
+     */
+    public void purgeExpiredSessions() {
+        activeSessions.entrySet().removeIf(entry -> entry.getValue().isExpired());
+    }
+
+    /**
+     * Registers a new user with password strength validation & SHA-256 password hashing.
      * Default role is STAFF for self-registered users.
-     * Returns true if successful, false if username already taken.
+     * Returns true if successful, false if username taken or password weak.
      */
     public boolean registerUser(String username, String password) {
         if (userDao.getUserByUsername(username) != null) return false;
+        if (!SecurityUtil.validatePasswordStrength(password)) return false;
+
         String hashed = SecurityUtil.hashPassword(password);
         userDao.addUser(new User(username, hashed, User.Role.STAFF));
         return true;
@@ -100,6 +144,7 @@ public class AuthService {
             case "API_APPROVE_PR":
             case "API_MANAGE_QUOTATIONS":
             case "API_MANAGE_ALERTS":
+            case "API_VIEW_AUDIT_LOGS":
                 return role == User.Role.OWNER || role == User.Role.MANAGER;
 
             case "DELETE_PRODUCT":
@@ -114,23 +159,14 @@ public class AuthService {
         }
     }
 
-    /**
-     * Retrieves all users (for admin user management).
-     */
     public List<User> getAllUsers() {
         return userDao.getAllUsers();
     }
 
-    /**
-     * Adds a new user (admin only).
-     */
     public void addUser(User user) {
         userDao.addUser(user);
     }
 
-    /**
-     * Deletes a user by ID (admin only).
-     */
     public void deleteUser(int userId) {
         userDao.deleteUser(userId);
     }

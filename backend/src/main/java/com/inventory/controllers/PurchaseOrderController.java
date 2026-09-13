@@ -4,6 +4,7 @@ import com.inventory.models.PurchaseOrder;
 import com.inventory.models.PurchaseOrderItem;
 import com.inventory.models.PurchaseOrderStatus;
 import com.inventory.models.User;
+import com.inventory.services.AuditLogService;
 import com.inventory.services.AuthService;
 import com.inventory.services.PurchaseOrderService;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ public class PurchaseOrderController {
 
     private final PurchaseOrderService poService = new PurchaseOrderService();
     private final AuthService authService = AuthService.getInstance();
+    private final AuditLogService auditLogService = new AuditLogService();
 
     @GetMapping
     public ResponseEntity<?> getPurchaseOrders(HttpServletRequest request) {
@@ -56,6 +58,11 @@ public class PurchaseOrderController {
                     body.getExpectedDeliveryDate(),
                     body.getItems()
             );
+
+            // Audit Log
+            auditLogService.log(user.getOrgId(), user.getId(), "CREATE_PURCHASE_ORDER", "PURCHASE_ORDER", po.getId(),
+                    "Created Purchase Order " + po.getPoNumber() + " ($" + String.format("%.2f", po.getTotalCost()) + ")");
+
             return ResponseEntity.ok(po);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -82,6 +89,11 @@ public class PurchaseOrderController {
             if (updatedPO == null) {
                 return ResponseEntity.notFound().build();
             }
+
+            // Audit Log
+            auditLogService.log(user.getOrgId(), user.getId(), "UPDATE_PO_STATUS", "PURCHASE_ORDER", id,
+                    "Updated Purchase Order " + updatedPO.getPoNumber() + " status to " + newStatus);
+
             return ResponseEntity.ok(updatedPO);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Invalid status value: " + statusStr);

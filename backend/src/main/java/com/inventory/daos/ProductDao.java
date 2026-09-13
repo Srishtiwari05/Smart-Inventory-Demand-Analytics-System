@@ -21,8 +21,11 @@ public class ProductDao {
             stmt.setString(2, p.getName());
             stmt.setString(3, p.getCategory());
             stmt.setDouble(4, p.getPrice());
-            stmt.setInt(5, p.getStockQuantity());
-            stmt.setInt(6, p.getSupplier() != null ? p.getSupplier().getId() : Types.NULL);
+            if (p.getSupplier() != null) {
+                stmt.setInt(6, p.getSupplier().getId());
+            } else {
+                stmt.setNull(6, Types.INTEGER);
+            }
             stmt.setDouble(7, p.getRating());
             stmt.setInt(8, p.getOrgId() > 0 ? p.getOrgId() : 1);
 
@@ -138,6 +141,67 @@ public class ProductDao {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public Product getProductByName(int orgId, String name) {
+        String query = "SELECT p.id, p.name, c.name as category_name, p.price, p.stock_quantity, p.supplier_id, p.rating, p.org_id " +
+                       "FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.org_id = ? AND LOWER(p.name) = LOWER(?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, orgId);
+            stmt.setString(2, name);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Supplier s = supplierDao.getSupplierById(rs.getInt("supplier_id"));
+                    Product product = new Product(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("category_name"),
+                            rs.getDouble("price"),
+                            rs.getInt("stock_quantity"),
+                            s,
+                            rs.getDouble("rating")
+                    );
+                    product.setOrgId(rs.getInt("org_id"));
+                    return product;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public List<Product> searchProducts(int orgId, String nameQuery) {
+        List<Product> products = new ArrayList<>();
+        String query = "SELECT p.id, p.name, c.name as category_name, p.price, p.stock_quantity, p.supplier_id, p.rating, p.org_id " +
+                       "FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.org_id = ? AND LOWER(p.name) LIKE LOWER(?) ORDER BY p.name ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, orgId);
+            stmt.setString(2, "%" + nameQuery + "%");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Supplier s = supplierDao.getSupplierById(rs.getInt("supplier_id"));
+                    Product product = new Product(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("category_name"),
+                            rs.getDouble("price"),
+                            rs.getInt("stock_quantity"),
+                            s,
+                            rs.getDouble("rating")
+                    );
+                    product.setOrgId(rs.getInt("org_id"));
+                    products.add(product);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return products;
     }
 
     public void deleteProduct(int productId) {

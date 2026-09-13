@@ -1,10 +1,11 @@
 package com.inventory.config;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 @Component
@@ -13,32 +14,60 @@ public class DatabaseConnection {
     private static String url;
     private static String user;
     private static String password;
+    private static volatile HikariDataSource dataSource;
 
-    // Spring injects values from application.properties into the instance,
-    // which then sets the static fields used by DAOs.
-    @Value("${db.url}")
+    @Value("${db.url:jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true}")
     public void setUrl(String url) { DatabaseConnection.url = url; }
 
-    @Value("${db.username}")
+    @Value("${db.username:root}")
     public void setUser(String user) { DatabaseConnection.user = user; }
 
-    @Value("${db.password}")
+    @Value("${db.password:Bhanu@2205}")
     public void setPassword(String password) { DatabaseConnection.password = password; }
 
-    public static Connection getConnection() {
-        if (url == null || url.trim().isEmpty()) {
-            // Fallback for ConsoleApp which doesn't start the Spring context
-            url = "jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
-            user = "root";
-            password = "Bhanu@2205";
+    private static synchronized HikariDataSource getDataSource() {
+        if (dataSource == null || dataSource.isClosed()) {
+            if (url == null || url.trim().isEmpty()) {
+                url = "jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+                user = "root";
+                password = "Bhanu@2205";
+            }
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(url);
+            config.setUsername(user);
+            config.setPassword(password);
+            config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            
+            // Connection Pool Performance Settings
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(2);
+            config.setIdleTimeout(300000); // 5 minutes
+            config.setConnectionTimeout(10000); // 10 seconds
+            config.setPoolName("SmartInventoryHikariCP");
+
+            // Recommended MySQL performance parameters
+            config.addDataSourceProperty("cachePrepStmts", "true");
+            config.addDataSourceProperty("prepStmtCacheSize", "250");
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+            config.addDataSourceProperty("useServerPrepStmts", "true");
+
+            dataSource = new HikariDataSource(config);
         }
+        return dataSource;
+    }
+
+    public static Connection getConnection() {
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            return DriverManager.getConnection(url, user, password);
-        } catch (SQLException | ClassNotFoundException e) {
+            return getDataSource().getConnection();
+        } catch (SQLException e) {
             e.printStackTrace();
-            throw new RuntimeException("Error connecting to the database", e);
+            throw new RuntimeException("Error obtaining pooled database connection", e);
+        }
+    }
+
+    public static synchronized void closePool() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
         }
     }
 }
-

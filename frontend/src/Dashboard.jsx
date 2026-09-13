@@ -9,6 +9,7 @@ import TransactionsView from './views/TransactionsView';
 import PurchaseOrdersView from './views/PurchaseOrdersView';
 import AlertsView from './views/AlertsView';
 import SupplierPortalView from './views/SupplierPortalView';
+import AuditLogsView from './views/AuditLogsView';
 
 const ROLE_BADGE = {
   OWNER: { bg: 'rgba(239,68,68,0.2)', color: '#f87171', label: 'Owner' },
@@ -82,6 +83,7 @@ export default function Dashboard({ user, onLogout }) {
     { id: 'analytics',       icon: '📈', label: 'Analytics',       show: isManager },
     { id: 'suppliers',       icon: '🚚', label: 'Suppliers',       show: isManager },
     { id: 'transactions',    icon: '🔄', label: 'Transactions',    show: isManager },
+    { id: 'audit_logs',      icon: '📜', label: 'Audit Trail',     show: isManager },
   ].filter(t => t.show);
 
   return (
@@ -140,6 +142,7 @@ export default function Dashboard({ user, onLogout }) {
         {activeTab === 'analytics'       && <AnalyticsView       user={user} />}
         {activeTab === 'suppliers'       && <SuppliersView       user={user} />}
         {activeTab === 'transactions'    && <TransactionsView    user={user} />}
+        {activeTab === 'audit_logs'      && <AuditLogsView       user={user} />}
       </main>
     </div>
   );

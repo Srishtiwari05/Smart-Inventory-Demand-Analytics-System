@@ -30,8 +30,8 @@ public class UserDao {
         List<User> users = new ArrayList<>();
         String query = "SELECT id, username, password, role, created_at, org_id, supplier_id FROM users";
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 users.add(mapRowToUser(rs));

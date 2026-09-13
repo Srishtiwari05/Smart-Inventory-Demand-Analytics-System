@@ -1,9 +1,11 @@
 package com.inventory.controllers;
 
 import com.inventory.daos.OrderDao;
+import com.inventory.services.CacheService;
 import com.inventory.services.OrderService;
 import com.inventory.services.AuthService;
 import com.inventory.models.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +17,25 @@ import java.util.Map;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-    private final OrderService orderService = new OrderService();
-    private final OrderDao orderDao = new OrderDao();
-    private final AuthService authService = AuthService.getInstance();
+    private final OrderService orderService;
+    private final OrderDao orderDao;
+    private final AuthService authService;
+    private final CacheService cacheService;
+
+    @Autowired
+    public OrderController(OrderService orderService, OrderDao orderDao, CacheService cacheService) {
+        this.orderService = orderService;
+        this.orderDao = orderDao;
+        this.authService = AuthService.getInstance();
+        this.cacheService = cacheService;
+    }
+
+    public OrderController() {
+        this.orderService = new OrderService();
+        this.orderDao = new OrderDao();
+        this.authService = AuthService.getInstance();
+        this.cacheService = CacheService.getInstance();
+    }
 
     @GetMapping
     public ResponseEntity<?> getAllOrders(HttpServletRequest request) {
@@ -34,9 +52,15 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> placeOrder(@RequestBody OrderRequest request) {
+    public ResponseEntity<?> placeOrder(@RequestBody OrderRequest request, HttpServletRequest servletRequest) {
         int orderId = orderService.placeOrder(request.getCustomerId(), request.getProductIds(), request.getQuantities());
         if (orderId != -1) {
+            User user = (User) servletRequest.getAttribute("authenticatedUser");
+            if (user != null) {
+                cacheService.invalidateTenant(user.getOrgId());
+            } else {
+                cacheService.clearAll();
+            }
             return ResponseEntity.ok(Map.of("message", "Order placed successfully", "orderId", orderId));
         }
         return ResponseEntity.badRequest().body("Failed to place order. Check stock availability and product IDs.");

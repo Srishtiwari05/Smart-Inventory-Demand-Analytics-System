@@ -110,6 +110,7 @@ public class InventoryService {
     }
     
     public Product searchProductByName(String name) {
+        // Fallback for legacy console CLI
         List<Product> products = productDao.getAllProducts();
         for (Product p : products) {
             if (p.getName().equalsIgnoreCase(name)) {
@@ -117,6 +118,14 @@ public class InventoryService {
             }
         }
         return null;
+    }
+
+    public Product searchProductByName(int orgId, String name) {
+        return productDao.getProductByName(orgId, name);
+    }
+
+    public List<Product> searchProducts(int orgId, String nameQuery) {
+        return productDao.searchProducts(orgId, nameQuery);
     }
 
     public void deleteProduct(int productId) {
