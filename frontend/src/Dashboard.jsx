@@ -30,6 +30,28 @@ export default function Dashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState(isManager ? 'overview' : 'products');
   const [unreadAlerts, setUnreadAlerts] = useState(0);
 
+  const fetchAlertCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/alerts/summary', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadAlerts(data.totalUnread || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching alert count:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (role === 'SUPPLIER') return undefined;
+    fetchAlertCount();
+    const interval = setInterval(fetchAlertCount, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab, role]);
+
   if (role === 'SUPPLIER') {
     return (
       <div className="app-container">
@@ -53,27 +75,6 @@ export default function Dashboard({ user, onLogout }) {
       </div>
     );
   }
-
-  const fetchAlertCount = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/alerts/summary', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUnreadAlerts(data.totalUnread || 0);
-      }
-    } catch (err) {
-      console.error('Error fetching alert count:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchAlertCount();
-    const interval = setInterval(fetchAlertCount, 15000);
-    return () => clearInterval(interval);
-  }, [activeTab]);
 
   const tabs = [
     { id: 'overview',        label: 'Overview',              show: isManager },
