@@ -1,22 +1,25 @@
 import { useState, useEffect } from 'react';
 
-export default function OverviewView({ user, onNavigate }) {
+export default function OverviewView({ user, onNavigate, onLogout }) {
   const [kpi, setKpi] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const token = localStorage.getItem('token');
 
   const fetchKpis = async () => {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch('/api/analytics/kpi', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
         setKpi(data);
+      } else if (res.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('rememberedUser');
+        setError('Session Expired (Status 401)');
       } else {
         setError(`Failed to load KPIs (Status ${res.status})`);
       }
@@ -64,25 +67,53 @@ export default function OverviewView({ user, onNavigate }) {
   }
 
   if (error) {
+    const is401 = error.includes('401') || error.includes('Expired');
     return (
       <div style={{ padding: '32px 0' }}>
-        <div className="glass-panel" style={{ padding: '24px', borderColor: 'var(--danger)', color: 'var(--danger)' }}>
-          <h3 style={{ margin: '0 0 8px 0' }}>Error Loading Operational Metrics</h3>
-          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{error}</p>
-          <button
-            onClick={fetchKpis}
-            style={{
-              marginTop: '16px',
-              padding: '8px 16px',
-              background: 'var(--accent-primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            Retry
-          </button>
+        <div className="glass-panel" style={{ padding: '28px', borderColor: 'rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.04)', borderRadius: '12px' }}>
+          <h3 style={{ margin: '0 0 8px 0', color: '#f87171', fontSize: '1.2rem' }}>
+            {is401 ? 'Session Expired (Status 401)' : 'Error Loading Operational Metrics'}
+          </h3>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
+            {is401
+              ? 'Your active session token has expired or the backend server was restarted. Please log in again to authenticate.'
+              : error}
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            {is401 && onLogout ? (
+              <button
+                onClick={onLogout}
+                style={{
+                  padding: '10px 22px',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
+                }}
+              >
+                Log In Again
+              </button>
+            ) : (
+              <button
+                onClick={fetchKpis}
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--accent-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Retry Connection
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -93,8 +124,8 @@ export default function OverviewView({ user, onNavigate }) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span>🏠</span> Operational Dashboard
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, margin: 0 }}>
+            Operational Dashboard
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.95rem' }}>
             Real-time operational summary, inventory risks, and procurement pipeline for {user?.orgName || 'your organization'}.
@@ -117,7 +148,7 @@ export default function OverviewView({ user, onNavigate }) {
             transition: 'var(--transition)'
           }}
         >
-          🔄 Refresh Metrics
+          Refresh Metrics
         </button>
       </div>
 
@@ -131,7 +162,6 @@ export default function OverviewView({ user, onNavigate }) {
           <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Total Inventory Value</span>
-              <span style={{ fontSize: '1.4rem' }}>💰</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -155,7 +185,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Active Products</span>
-              <span style={{ fontSize: '1.4rem' }}>📦</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
@@ -168,7 +197,6 @@ export default function OverviewView({ user, onNavigate }) {
           <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>30-Day Sales Revenue</span>
-              <span style={{ fontSize: '1.4rem' }}>📈</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--success)' }}>
@@ -192,7 +220,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>30-Day Orders Count</span>
-              <span style={{ fontSize: '1.4rem' }}>🛒</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -224,7 +251,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Critical Stock Items</span>
-              <span style={{ fontSize: '1.3rem' }}>🚨</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: (kpi?.criticalStockCount || 0) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
@@ -246,7 +272,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Low Stock / Reorder</span>
-              <span style={{ fontSize: '1.3rem' }}>⚠️</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: (kpi?.lowStockCount || 0) > 0 ? 'var(--warning)' : 'var(--text-primary)' }}>
@@ -268,7 +293,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Stockout in ≤7 Days</span>
-              <span style={{ fontSize: '1.3rem' }}>⏱️</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: (kpi?.expectedStockoutsCount || 0) > 0 ? '#eab308' : 'var(--text-primary)' }}>
@@ -290,7 +314,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Unread Alerts</span>
-              <span style={{ fontSize: '1.3rem' }}>🔔</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: (kpi?.unreadAlertsCount || 0) > 0 ? '#8b5cf6' : 'var(--text-primary)' }}>
@@ -322,7 +345,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Overdue Purchase Orders</span>
-              <span style={{ fontSize: '1.3rem' }}>⏰</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: (kpi?.overduePOCount || 0) > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
@@ -345,7 +367,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Pending Purchase Orders</span>
-              <span style={{ fontSize: '1.3rem' }}>📄</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
@@ -366,7 +387,6 @@ export default function OverviewView({ user, onNavigate }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>Pending PR Approvals</span>
-              <span style={{ fontSize: '1.3rem' }}>📋</span>
             </div>
             <div style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>

@@ -2,9 +2,11 @@ package com.inventory.services;
 
 import com.inventory.daos.SalesDao;
 import com.inventory.models.Sale;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class SalesService {
     private SalesDao salesDao;
 

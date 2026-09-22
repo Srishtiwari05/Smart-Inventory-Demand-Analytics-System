@@ -2,11 +2,13 @@ package com.inventory.daos;
 
 import com.inventory.config.DatabaseConnection;
 import com.inventory.models.AuditLog;
+import org.springframework.stereotype.Component;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class AuditLogDao {
 
     public AuditLogDao() {

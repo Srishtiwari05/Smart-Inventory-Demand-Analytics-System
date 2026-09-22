@@ -39,6 +39,6 @@ public class WebConfig implements WebMvcConfigurer {
         // 3. Auth Guard on protected /api/** endpoints
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/login", "/api/auth/register");
+                .excludePathPatterns("/api/auth/login", "/api/auth/register", "/api/platform/stats", "/api/onboarding/register-tenant");
     }
 }

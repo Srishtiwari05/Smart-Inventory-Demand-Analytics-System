@@ -5,11 +5,13 @@ import com.inventory.models.Alert;
 import com.inventory.models.AlertSeverity;
 import com.inventory.models.AlertSummary;
 import com.inventory.models.AlertType;
+import org.springframework.stereotype.Component;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Component
 public class AlertDao {
 
     public boolean createAlert(Alert alert) {

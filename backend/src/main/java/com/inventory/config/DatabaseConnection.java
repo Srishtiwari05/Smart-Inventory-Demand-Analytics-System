@@ -28,9 +28,25 @@ public class DatabaseConnection {
     private static synchronized HikariDataSource getDataSource() {
         if (dataSource == null || dataSource.isClosed()) {
             if (url == null || url.trim().isEmpty()) {
-                url = "jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
-                user = "root";
-                password = "Bhanu@2205";
+                String envHost = System.getenv("DB_HOST");
+                String envPort = System.getenv("DB_PORT");
+                String envDb = System.getenv("DB_NAME");
+                String envUser = System.getenv("DB_USER");
+                String envPass = System.getenv("DB_PASSWORD");
+                String envUrl = System.getenv("DB_URL");
+
+                if (envUrl != null && !envUrl.trim().isEmpty()) {
+                    url = envUrl;
+                } else if (envHost != null && !envHost.trim().isEmpty()) {
+                    String port = (envPort != null && !envPort.trim().isEmpty()) ? envPort : "3306";
+                    String db = (envDb != null && !envDb.trim().isEmpty()) ? envDb : "smart_inventory";
+                    url = "jdbc:mysql://" + envHost + ":" + port + "/" + db + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+                } else {
+                    url = "jdbc:mysql://localhost:3306/smart_inventory?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true";
+                }
+
+                user = (envUser != null && !envUser.trim().isEmpty()) ? envUser : "root";
+                password = (envPass != null) ? envPass : "Bhanu@2205";
             }
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(url);

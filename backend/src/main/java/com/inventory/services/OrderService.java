@@ -2,9 +2,11 @@ package com.inventory.services;
 
 import com.inventory.daos.*;
 import com.inventory.models.Product;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class OrderService {
     private OrderDao orderDao;
     private OrderItemDao orderItemDao;

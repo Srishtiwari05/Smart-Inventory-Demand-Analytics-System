@@ -27,7 +27,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import com.inventory.models.AbcClassification;
+import com.inventory.models.AbcAnalysisResult;
+import com.inventory.models.DemandAnomaly;
+import com.inventory.models.MonthlyDemandPoint;
 
 @Service
 public class AnalyticsService {
@@ -308,5 +315,192 @@ public class AnalyticsService {
         }
         
         return reportList;
+    }
+
+    // =========================================================
+    // Phase 31 — Advanced Business Intelligence
+    // =========================================================
+
+    /**
+     * ABC Inventory Classification using Pareto principle.
+     * Ranks products by 90-day SALE revenue, then assigns A (0-80%), B (80-95%), C (95-100%).
+     */
+    public AbcAnalysisResult getAbcAnalysis(int orgId) {
+        // Single JOIN query: sum sale revenue per product for last 90 days
+        String sql = "SELECT p.id, p.name, " +
+                     "SUM(ABS(it.quantity_changed)) AS units_sold, " +
+                     "SUM(ABS(it.quantity_changed) * p.price) AS revenue " +
+                     "FROM inventory_transactions it " +
+                     "JOIN products p ON it.product_id = p.id " +
+                     "WHERE it.transaction_type = 'SALE' " +
+                     "AND p.org_id = ? " +
+                     "AND it.transaction_date >= DATE_SUB(NOW(), INTERVAL 90 DAY) " +
+                     "GROUP BY p.id, p.name " +
+                     "ORDER BY revenue DESC";
+
+        List<int[]> rawIds = new ArrayList<>();
+        List<String> rawNames = new ArrayList<>();
+        List<Double> rawRevenues = new ArrayList<>();
+        List<Integer> rawUnits = new ArrayList<>();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, orgId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    rawIds.add(new int[]{rs.getInt("id")});
+                    rawNames.add(rs.getString("name"));
+                    rawRevenues.add(rs.getDouble("revenue"));
+                    rawUnits.add(rs.getInt("units_sold"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        double totalRevenue = rawRevenues.stream().mapToDouble(Double::doubleValue).sum();
+        List<AbcClassification> items = new ArrayList<>();
+        int classACount = 0, classBCount = 0, classCCount = 0;
+        double cumulative = 0.0;
+
+        for (int i = 0; i < rawIds.size(); i++) {
+            double rev = rawRevenues.get(i);
+            double pct = totalRevenue > 0 ? (rev / totalRevenue) * 100.0 : 0.0;
+            cumulative += pct;
+            String cls;
+            if (cumulative <= 80.0) cls = "A";
+            else if (cumulative <= 95.0) cls = "B";
+            else cls = "C";
+
+            if ("A".equals(cls)) classACount++;
+            else if ("B".equals(cls)) classBCount++;
+            else classCCount++;
+
+            items.add(new AbcClassification(
+                    rawIds.get(i)[0], rawNames.get(i), cls,
+                    rev, rawUnits.get(i), pct, cumulative
+            ));
+        }
+        return new AbcAnalysisResult(items, totalRevenue, classACount, classBCount, classCCount);
+    }
+
+    /**
+     * Demand Anomaly Detection using Z-score.
+     * Compares each product's last-7-day average demand against its 60-day rolling mean.
+     * Only returns products where |z-score| >= 2.0 (statistically significant deviation).
+     */
+    public List<DemandAnomaly> getDemandAnomalies(int orgId) {
+        // Query: daily SALE units per product for last 60 days, scoped to org
+        String sql = "SELECT p.id, p.name, DATE(it.transaction_date) AS sale_day, " +
+                     "SUM(ABS(it.quantity_changed)) AS units " +
+                     "FROM inventory_transactions it " +
+                     "JOIN products p ON it.product_id = p.id " +
+                     "WHERE it.transaction_type = 'SALE' " +
+                     "AND p.org_id = ? " +
+                     "AND it.transaction_date >= DATE_SUB(NOW(), INTERVAL 60 DAY) " +
+                     "GROUP BY p.id, p.name, DATE(it.transaction_date) " +
+                     "ORDER BY p.id, sale_day";
+
+        // productId -> Map<dayString, units>
+        Map<Integer, String> idToName = new HashMap<>();
+        Map<Integer, List<double[]>> productDailyData = new HashMap<>(); // [0]=daysAgo, [1]=units
+
+        LocalDate today = LocalDate.now();
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, orgId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int pid = rs.getInt("id");
+                    String pname = rs.getString("name");
+                    LocalDate saleDay = rs.getDate("sale_day").toLocalDate();
+                    double units = rs.getDouble("units");
+                    long daysAgo = today.toEpochDay() - saleDay.toEpochDay();
+
+                    idToName.put(pid, pname);
+                    productDailyData.computeIfAbsent(pid, k -> new ArrayList<>())
+                                    .add(new double[]{daysAgo, units});
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        List<DemandAnomaly> anomalies = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<double[]>> entry : productDailyData.entrySet()) {
+            int pid = entry.getKey();
+            List<double[]> dailyRows = entry.getValue();
+
+            // Compute 60-day mean
+            double sum60 = 0; int count60 = 0;
+            double sum7 = 0; int count7 = 0;
+            for (double[] row : dailyRows) {
+                sum60 += row[1]; count60++;
+                if (row[0] <= 7) { sum7 += row[1]; count7++; }
+            }
+            if (count60 < 3) continue; // not enough data
+
+            double mean60 = sum60 / count60;
+            double current7Avg = count7 > 0 ? sum7 / count7 : 0.0;
+
+            // Compute standard deviation of the 60-day daily series
+            double variance = 0;
+            for (double[] row : dailyRows) {
+                variance += Math.pow(row[1] - mean60, 2);
+            }
+            double stdDev = Math.sqrt(variance / count60);
+            if (stdDev < 0.01) continue; // flat demand — skip
+
+            double zScore = (current7Avg - mean60) / stdDev;
+            if (Math.abs(zScore) < 2.0) continue;
+
+            double deviationPct = mean60 > 0 ? ((current7Avg - mean60) / mean60) * 100.0 : 0.0;
+            String type = zScore > 0 ? "SPIKE" : "CRASH";
+
+            anomalies.add(new DemandAnomaly(pid, idToName.get(pid), type,
+                    current7Avg, mean60, zScore, deviationPct));
+        }
+
+        // Sort by absolute z-score descending (biggest anomalies first)
+        anomalies.sort(Comparator.comparingDouble(a -> -Math.abs(a.getZScore())));
+        return anomalies;
+    }
+
+    /**
+     * Seasonal Trend Analysis — monthly SALE unit totals per product for the last 6 months.
+     * Returns a flat list sorted by productId then yearMonth.
+     */
+    public List<MonthlyDemandPoint> getSeasonalTrends(int orgId) {
+        String sql = "SELECT p.id, p.name, " +
+                     "DATE_FORMAT(it.transaction_date, '%Y-%m') AS year_month, " +
+                     "SUM(ABS(it.quantity_changed)) AS units_sold " +
+                     "FROM inventory_transactions it " +
+                     "JOIN products p ON it.product_id = p.id " +
+                     "WHERE it.transaction_type = 'SALE' " +
+                     "AND p.org_id = ? " +
+                     "AND it.transaction_date >= DATE_SUB(NOW(), INTERVAL 180 DAY) " +
+                     "GROUP BY p.id, p.name, DATE_FORMAT(it.transaction_date, '%Y-%m') " +
+                     "ORDER BY p.id, year_month";
+
+        List<MonthlyDemandPoint> result = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, orgId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new MonthlyDemandPoint(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("year_month"),
+                            rs.getInt("units_sold")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }

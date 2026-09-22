@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 
-export default function Login({ onLogin }) {
-  const [tab, setTab] = useState('login');            // 'login' | 'register'
+export default function Login({ onLogin, onClose, defaultTab = 'login' }) {
+  const [tab, setTab] = useState(defaultTab);            // 'login' | 'register'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setTab(defaultTab);
+  }, [defaultTab]);
 
   // On mount: if a remembered session exists, restore it automatically
   useEffect(() => {
@@ -61,9 +65,36 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <div className="login-card glass-panel">
-        <h1>Smart Inventory</h1>
-        <p style={{marginBottom: '24px'}}>Demand Intelligence System</p>
+      <div className="login-card glass-panel" style={{ position: 'relative' }}>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              background: 'rgba(255,255,255,0.08)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              color: '#fff',
+              fontSize: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Close"
+          >
+            ✕
+          </button>
+        )}
+        <h1>StockWise</h1>
+        <p style={{marginBottom: '24px', color: '#a78bfa', fontWeight: 'bold', fontSize: '0.9rem', letterSpacing: '0.5px'}}>
+          Backed by BUSZ
+        </p>
 
         {/* Tabs */}
         <div style={{display: 'flex', gap: '8px', marginBottom: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '4px'}}>

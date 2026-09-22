@@ -1,17 +1,25 @@
 package com.inventory.services;
 
+import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+@Service
 public class PredictionService {
 
-    private static final String ML_SERVICE_URL = "http://localhost:5000/predict/";
+    private final String mlServiceUrl;
     private final HttpClient httpClient;
 
     public PredictionService() {
+        String envUrl = System.getenv("ML_SERVICE_URL");
+        if (envUrl != null && !envUrl.trim().isEmpty()) {
+            this.mlServiceUrl = envUrl.endsWith("/") ? envUrl : envUrl + "/";
+        } else {
+            this.mlServiceUrl = "http://localhost:5000/predict/";
+        }
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
@@ -25,7 +33,7 @@ public class PredictionService {
     public String getDemandPrediction(int productId) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ML_SERVICE_URL + productId))
+                    .uri(URI.create(this.mlServiceUrl + productId))
                     .GET()
                     .timeout(Duration.ofSeconds(10))
                     .build();

@@ -17,17 +17,33 @@ else:
     model = None
 
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({
+        "status": "UP",
+        "service": "ml-demand-prediction",
+        "modelLoaded": model is not None
+    }), 200
+
+
 def get_real_features(product_id):
     """
     Query MySQL for actual recent sales of this product.
     Returns (lag_1_sales, ma_7) based on real order_items data.
     Falls back to (0.0, 0.0) if the product has no recent history.
     """
+    host = os.getenv('MYSQL_HOST', os.getenv('DB_HOST', 'localhost'))
+    port = int(os.getenv('MYSQL_PORT', os.getenv('DB_PORT', '3306')))
+    user = os.getenv('MYSQL_USER', os.getenv('DB_USER', 'root'))
+    password = os.getenv('MYSQL_PASSWORD', os.getenv('DB_PASSWORD', 'Bhanu@2205'))
+    database = os.getenv('MYSQL_DB', os.getenv('DB_NAME', 'smart_inventory'))
+
     connection = pymysql.connect(
-        host='localhost',
-        user='root',
-        password='Bhanu@2205',
-        database='smart_inventory',
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
         cursorclass=pymysql.cursors.DictCursor
     )
     try:

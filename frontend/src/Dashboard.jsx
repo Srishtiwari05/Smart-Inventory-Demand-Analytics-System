@@ -10,6 +10,8 @@ import PurchaseOrdersView from './views/PurchaseOrdersView';
 import AlertsView from './views/AlertsView';
 import SupplierPortalView from './views/SupplierPortalView';
 import AuditLogsView from './views/AuditLogsView';
+import ValidationTelemetryView from './views/ValidationTelemetryView';
+import BusinessIntelligenceView from './views/BusinessIntelligenceView';
 
 const ROLE_BADGE = {
   OWNER: { bg: 'rgba(239,68,68,0.2)', color: '#f87171', label: 'Owner' },
@@ -32,7 +34,7 @@ export default function Dashboard({ user, onLogout }) {
     return (
       <div className="app-container">
         <nav className="sidebar glass-panel">
-          <div className="brand">🐴 Supplier Portal</div>
+          <div className="brand">Supplier Portal</div>
           <div style={{ marginTop: 'auto' }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
               {user.username}
@@ -74,22 +76,31 @@ export default function Dashboard({ user, onLogout }) {
   }, [activeTab]);
 
   const tabs = [
-    { id: 'overview',        icon: '🏠', label: 'Overview',        show: isManager },
-    { id: 'products',        icon: '📦', label: 'Products',        show: true },
-    { id: 'orders',          icon: '🛒', label: 'Orders',          show: true },
-    { id: 'purchase_orders', icon: '📝', label: 'Purchase Orders', show: isManager },
-    { id: 'alerts',          icon: '🔔', label: 'Alerts',          show: true, badge: unreadAlerts },
-    { id: 'customers',       icon: '👥', label: 'Customers',       show: true },
-    { id: 'analytics',       icon: '📈', label: 'Analytics',       show: isManager },
-    { id: 'suppliers',       icon: '🚚', label: 'Suppliers',       show: isManager },
-    { id: 'transactions',    icon: '🔄', label: 'Transactions',    show: isManager },
-    { id: 'audit_logs',      icon: '📜', label: 'Audit Trail',     show: isManager },
+    { id: 'overview',        label: 'Overview',              show: isManager },
+    { id: 'products',        label: 'Products',              show: true },
+    { id: 'orders',          label: 'Orders',                show: true },
+    { id: 'purchase_orders', label: 'Purchase Orders',       show: isManager },
+    { id: 'alerts',          label: 'Alerts',                show: true, badge: unreadAlerts },
+    { id: 'customers',       label: 'Customers',             show: true },
+    { id: 'analytics',       label: 'Analytics',             show: isManager },
+    { id: 'telemetry',       label: 'Model Telemetry',       show: isManager },
+    { id: 'bi',              label: 'Business Intelligence', show: isManager },
+    { id: 'suppliers',       label: 'Suppliers',             show: isManager },
+    { id: 'transactions',    label: 'Transactions',          show: isManager },
+    { id: 'audit_logs',      label: 'Audit Trail',           show: isManager },
   ].filter(t => t.show);
 
   return (
     <div className="app-container">
       <nav className="sidebar glass-panel">
-        <div className="brand">🐴 Smart Inventory</div>
+        <div className="brand-container" style={{ paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.3px' }}>StockWise</span>
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#c084fc', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(139,92,246,0.3)', padding: '2px 7px', borderRadius: '10px', letterSpacing: '0.05em' }}>
+              BACKED BY BUSZ
+            </span>
+          </div>
+        </div>
 
         <div className="nav-links">
           {tabs.map(tab => (
@@ -99,7 +110,7 @@ export default function Dashboard({ user, onLogout }) {
               onClick={() => setActiveTab(tab.id)}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span>{tab.icon} {tab.label}</span>
+                <span>{tab.label}</span>
                 {tab.badge > 0 && (
                   <span
                     style={{
@@ -133,16 +144,18 @@ export default function Dashboard({ user, onLogout }) {
       </nav>
 
       <main className="main-content">
-        {activeTab === 'overview'        && <OverviewView        user={user} onNavigate={setActiveTab} />}
-        {activeTab === 'products'        && <ProductsView        user={user} />}
-        {activeTab === 'orders'          && <OrdersView          user={user} />}
-        {activeTab === 'purchase_orders' && <PurchaseOrdersView user={user} />}
-        {activeTab === 'alerts'          && <AlertsView          user={user} onNavigate={setActiveTab} />}
-        {activeTab === 'customers'       && <CustomersView       user={user} />}
-        {activeTab === 'analytics'       && <AnalyticsView       user={user} />}
-        {activeTab === 'suppliers'       && <SuppliersView       user={user} />}
-        {activeTab === 'transactions'    && <TransactionsView    user={user} />}
-        {activeTab === 'audit_logs'      && <AuditLogsView       user={user} />}
+        {activeTab === 'overview'        && <OverviewView           user={user} onNavigate={setActiveTab} onLogout={onLogout} />}
+        {activeTab === 'products'        && <ProductsView           user={user} />}
+        {activeTab === 'orders'          && <OrdersView             user={user} />}
+        {activeTab === 'purchase_orders' && <PurchaseOrdersView    user={user} />}
+        {activeTab === 'alerts'          && <AlertsView             user={user} onNavigate={setActiveTab} />}
+        {activeTab === 'customers'       && <CustomersView          user={user} />}
+        {activeTab === 'analytics'       && <AnalyticsView          user={user} />}
+        {activeTab === 'telemetry'       && <ValidationTelemetryView />}
+        {activeTab === 'bi'              && <BusinessIntelligenceView user={user} />}
+        {activeTab === 'suppliers'       && <SuppliersView          user={user} />}
+        {activeTab === 'transactions'    && <TransactionsView       user={user} />}
+        {activeTab === 'audit_logs'      && <AuditLogsView          user={user} />}
       </main>
     </div>
   );

@@ -3,9 +3,11 @@ package com.inventory.services;
 import com.inventory.daos.ProductDao;
 import com.inventory.daos.InventoryTransactionDao;
 import com.inventory.models.Product;
+import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class InventoryService {
     private ProductDao productDao;
     private InventoryTransactionDao transactionDao;
